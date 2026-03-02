@@ -119,6 +119,28 @@ def load_config(
     }})
     config = _deep_merge(config, scenario_cfg)
 
+    # Backward-compatibility aliases for older notebook/script keys
+    # Expected old keys:
+    #   config["paths"]["output_root"]
+    #   config["paths"]["exdark_root"]
+    #   config["paths"]["exdark_structure"]["images"|"groundtruth"|"classlist"]
+    p = config.setdefault("paths", {})
+    data = p.get("data", {})
+    exdark_meta = config.get("paths_meta", {}).get("exdark", {})
+
+    if "output_root" not in p:
+        p["output_root"] = p.get("drive_root") or p.get("project_root")
+
+    if "exdark_root" not in p:
+        p["exdark_root"] = data.get("exdark_original")
+
+    if "exdark_structure" not in p:
+        p["exdark_structure"] = {
+            "images": exdark_meta.get("images_dir", "Dataset/ExDark"),
+            "groundtruth": exdark_meta.get("groundtruth_dir", "Groundtruth"),
+            "classlist": exdark_meta.get("classlist_file", "Groundtruth/imageclasslist.txt"),
+        }
+
     # Add environment info
     config["environment"] = {
         "is_colab": is_colab,
