@@ -1,0 +1,18 @@
+# =============================================================================
+# Scenario S2 — HVI-CIDNet Enhancement → YOLOv11n
+# =============================================================================
+
+scenario:
+  name: "s2_hvi_cidnet"
+  description: "HVI-CIDNet enhanced ExDark → YOLOv11n"
+  enhancer: "hvi_cidnet"
+
+enhancer_config:
+  repo_url: "https://github.com/Fediory/HVI-CIDNet.git"
+  weight_source: "huggingface"
+  weight_repo: "Fediory/HVI-CIDNet-Generalization"
+  weight_file: "net_rgb.pth"
+  # Inference parameters (tunable)
+  alpha_s: 1.0
+  alpha_i: 1.0
+  gamma: 1.0

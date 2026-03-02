@@ -1,0 +1,34 @@
+# Pinned dependencies for reproducibility
+# Install: pip install -r requirements.txt
+
+# === Core ML ===
+ultralytics>=8.3.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# === Image Processing ===
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+
+# === Data & Science ===
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+
+# === Image Quality Assessment (NIQE, BRISQUE) ===
+pyiqa>=0.1.10
+
+# === Config & Utilities ===
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# === Visualization ===
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# === Image Metrics ===
+scikit-image>=0.21.0
+
+# === FLOPs calculation ===
+thop>=0.1.1
+fvcore>=0.1.5

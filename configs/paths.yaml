@@ -1,0 +1,92 @@
+# =============================================================================
+# Path Configuration — Auto-detects Colab vs Local
+# =============================================================================
+
+# Google Colab (primary execution environment)
+colab:
+  drive_root: "/content/drive/MyDrive/KULIAH-S1INFORMATIKA/TA-IQBAL"
+  project_root: "/content/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
+
+  data:
+    exdark_original: "${drive_root}/data/Exdark_original"
+    exdark_yolo: "${drive_root}/data/ExDark_yolo"
+    exdark_enhanced: "${drive_root}/data/ExDark_enhanced"
+    splits: "${drive_root}/data/splits"
+
+  runs: "${drive_root}/runs"
+  results: "${drive_root}/results"
+  cache: "${drive_root}/cache"
+  env: "${drive_root}/env"
+
+# Local development (Windows)
+local:
+  drive_root: "c:/CODE/KULIAH/TA"
+  project_root: "c:/CODE/KULIAH/TA/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
+
+  data:
+    exdark_original: "${drive_root}/DATASET/ExDark - REPO"
+    exdark_yolo: "${project_root}/outputs/ExDark_yolo"
+    exdark_enhanced: "${project_root}/outputs/ExDark_enhanced"
+    splits: "${project_root}/outputs/splits"
+
+  runs: "${project_root}/outputs/runs"
+  results: "${project_root}/outputs/results"
+  cache: "${project_root}/outputs/cache"
+  env: "${project_root}/outputs/env"
+
+# --- ExDark Structure (relative to exdark_original) ---
+exdark:
+  images_dir: "Dataset/ExDark"           # Contains Bicycle/, Boat/, ... Table/
+  groundtruth_dir: "Groundtruth"         # Contains Bicycle/, Boat/, ... Table/ + imageclasslist.txt
+  classlist_file: "Groundtruth/imageclasslist.txt"
+
+# --- Class Folder Names (order matters — maps to class ID) ---
+class_folders:
+  - "Bicycle"    # 0
+  - "Boat"       # 1
+  - "Bottle"     # 2
+  - "Bus"        # 3
+  - "Car"        # 4
+  - "Cat"        # 5
+  - "Chair"      # 6
+  - "Cup"        # 7
+  - "Dog"        # 8
+  - "Motorbike"  # 9
+  - "People"     # 10
+  - "Table"      # 11
+
+# --- ExDark Annotation Class Name → YOLO Class ID ---
+class_name_to_id:
+  Bicycle: 0
+  Boat: 1
+  Bottle: 2
+  Bus: 3
+  Car: 4
+  Cat: 5
+  Chair: 6
+  Cup: 7
+  Dog: 8
+  Motorbike: 9
+  People: 10
+  Table: 11
+
+# --- imageclasslist.txt Column 2 → Class Folder ---
+class_id_to_folder:
+  1: "Bicycle"
+  2: "Boat"
+  3: "Bottle"
+  4: "Bus"
+  5: "Car"
+  6: "Cat"
+  7: "Chair"
+  8: "Cup"
+  9: "Dog"
+  10: "Motorbike"
+  11: "People"
+  12: "Table"
+
+# --- Split Mapping (imageclasslist.txt Column 5) ---
+split_id_to_name:
+  1: "train"
+  2: "val"
+  3: "test"

@@ -1,0 +1,15 @@
+# =============================================================================
+# Scenario S4 — LYT-Net Enhancement → YOLOv11n
+# =============================================================================
+
+scenario:
+  name: "s4_lyt_net"
+  description: "LYT-Net enhanced ExDark → YOLOv11n"
+  enhancer: "lyt_net"
+
+enhancer_config:
+  repo_url: "https://github.com/albrateanu/LYT-Net.git"
+  weight_source: "google_drive"
+  weight_file: "lyt_net_lol.pth"
+  # LYT-Net config
+  arch: "LYTNet"

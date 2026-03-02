@@ -1,0 +1,209 @@
+"""
+Configuration loader — merges base.yaml + paths.yaml + scenario yaml.
+
+Handles:
+- Auto-detection of Colab vs Local environment
+- Variable interpolation (${drive_root}, ${project_root})
+- Quick test mode override
+- Config snapshot saving for reproducibility
+"""
+
+import os
+import re
+import copy
+import json
+import yaml
+import platform
+import subprocess
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+
+def _is_colab() -> bool:
+    """Detect if running in Google Colab."""
+    try:
+        import google.colab  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _interpolate_vars(data: Any, variables: Dict[str, str]) -> Any:
+    """Recursively interpolate ${var} placeholders in strings."""
+    if isinstance(data, str):
+        pattern = re.compile(r"\$\{(\w+)\}")
+        def replacer(match):
+            key = match.group(1)
+            return variables.get(key, match.group(0))
+        # Multiple passes for nested references
+        for _ in range(3):
+            new_data = pattern.sub(replacer, data)
+            if new_data == data:
+                break
+            data = new_data
+        return data
+    elif isinstance(data, dict):
+        return {k: _interpolate_vars(v, variables) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_interpolate_vars(item, variables) for item in data]
+    return data
+
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Deep merge override into base dict. Override wins on conflict."""
+    result = copy.deepcopy(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
+def load_yaml(path: str) -> dict:
+    """Load a YAML file."""
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def load_config(
+    scenario: str = "s1_raw",
+    config_dir: Optional[str] = None,
+    quick_test: bool = False,
+) -> dict:
+    """Load and merge configuration for a scenario.
+
+    Args:
+        scenario: Scenario name (s1_raw, s2_hvi_cidnet, s3_retinexformer, s4_lyt_net)
+        config_dir: Path to configs/ directory. Auto-detected if None.
+        quick_test: Override to quick test mode (1 epoch).
+
+    Returns:
+        Merged configuration dictionary with resolved paths.
+    """
+    # Find config directory
+    if config_dir is None:
+        # Try relative to this file, then CWD
+        this_dir = Path(__file__).parent.parent
+        config_dir = str(this_dir / "configs")
+        if not os.path.exists(config_dir):
+            config_dir = "configs"
+
+    # Load base configs
+    base = load_yaml(os.path.join(config_dir, "base.yaml"))
+    paths = load_yaml(os.path.join(config_dir, "paths.yaml"))
+
+    # Load scenario config
+    scenario_file = os.path.join(config_dir, f"{scenario}.yaml")
+    scenario_cfg = load_yaml(scenario_file) if os.path.exists(scenario_file) else {}
+
+    # Determine environment
+    is_colab = _is_colab()
+    env_key = "colab" if is_colab else "local"
+    env_paths = paths.get(env_key, {})
+
+    # Build interpolation variables
+    variables = {
+        "drive_root": env_paths.get("drive_root", ""),
+        "project_root": env_paths.get("project_root", ""),
+    }
+
+    # Resolve paths with variable interpolation
+    resolved_paths = _interpolate_vars(env_paths, variables)
+
+    # Merge: base + paths + scenario
+    config = _deep_merge(base, {"paths": resolved_paths})
+    config = _deep_merge(config, {"paths_meta": {
+        k: v for k, v in paths.items()
+        if k not in ("colab", "local")
+    }})
+    config = _deep_merge(config, scenario_cfg)
+
+    # Add environment info
+    config["environment"] = {
+        "is_colab": is_colab,
+        "env_key": env_key,
+        "platform": platform.system(),
+    }
+
+    # Quick test override
+    if quick_test or config.get("quick_test", False):
+        config["quick_test"] = True
+        config["yolo"]["epochs"] = config.get("quick_test_epochs", 1)
+        config["yolo"]["batch"] = config.get("quick_test_batch", 8)
+        print("[CONFIG] Quick test mode: epochs=1, batch=8")
+
+    return config
+
+
+def get_data_paths(config: dict) -> dict:
+    """Extract resolved data paths from config.
+
+    Returns dict with keys: exdark_original, exdark_yolo, exdark_enhanced, splits, runs, results, cache
+    """
+    p = config.get("paths", {})
+    data = p.get("data", {})
+    return {
+        "exdark_original": data.get("exdark_original", ""),
+        "exdark_yolo": data.get("exdark_yolo", ""),
+        "exdark_enhanced": data.get("exdark_enhanced", ""),
+        "splits": data.get("splits", ""),
+        "runs": p.get("runs", ""),
+        "results": p.get("results", ""),
+        "cache": p.get("cache", ""),
+    }
+
+
+def save_config_snapshot(config: dict, output_dir: str) -> str:
+    """Save a frozen copy of the config for reproducibility.
+
+    Args:
+        config: Configuration dictionary
+        output_dir: Directory to save snapshot
+
+    Returns:
+        Path to saved snapshot file
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    snapshot_path = os.path.join(output_dir, "config_snapshot.yaml")
+
+    with open(snapshot_path, "w", encoding="utf-8") as f:
+        yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+    print(f"[CONFIG] Snapshot saved: {snapshot_path}")
+    return snapshot_path
+
+
+def save_environment_info(output_dir: str) -> str:
+    """Save environment info (GPU, CUDA, PyTorch, pip freeze) for reproducibility."""
+    import torch
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    info = {
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "pytorch": torch.__version__,
+        "cuda_available": torch.cuda.is_available(),
+        "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
+        "cudnn_version": str(torch.backends.cudnn.version()) if torch.cuda.is_available() else None,
+        "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+        "gpu_memory_gb": round(torch.cuda.get_device_properties(0).total_mem / 1e9, 2) if torch.cuda.is_available() else None,
+    }
+
+    # Save JSON
+    info_path = os.path.join(output_dir, "system_info.json")
+    with open(info_path, "w") as f:
+        json.dump(info, f, indent=2)
+
+    # Save pip freeze
+    try:
+        freeze = subprocess.check_output(["pip", "freeze"], text=True)
+        freeze_path = os.path.join(output_dir, "requirements_frozen.txt")
+        with open(freeze_path, "w") as f:
+            f.write(freeze)
+    except Exception:
+        pass
+
+    print(f"[ENV] System info saved: {info_path}")
+    return info_path

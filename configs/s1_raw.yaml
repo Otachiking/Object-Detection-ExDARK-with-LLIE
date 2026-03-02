@@ -1,0 +1,12 @@
+# =============================================================================
+# Scenario S1 — Baseline (Raw ExDark → YOLOv11n)
+# =============================================================================
+
+scenario:
+  name: "s1_raw"
+  description: "Baseline: raw ExDark images (resized 640) → YOLOv11n"
+  enhancer: null                # No enhancement
+
+# Dataset YAML will point to ExDark_yolo/
+# Labels: ExDark_yolo/labels/{train,val,test}/
+# Images: ExDark_yolo/images/{train,val,test}/

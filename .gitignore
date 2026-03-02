@@ -1,0 +1,42 @@
+# ==== Python ====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ==== Virtual Environment ====
+venv/
+env/
+.env
+
+# ==== IDE ====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==== Jupyter ====
+.ipynb_checkpoints/
+
+# ==== Data & Outputs (large files, not tracked) ====
+outputs/
+data/
+runs/
+cache/
+*.pt
+*.pth
+*.h5
+*.onnx
+
+# ==== OS ====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==== Logs ====
+*.log
+wandb/

@@ -1,0 +1,15 @@
+# =============================================================================
+# Scenario S3 — RetinexFormer Enhancement → YOLOv11n
+# =============================================================================
+
+scenario:
+  name: "s3_retinexformer"
+  description: "RetinexFormer enhanced ExDark → YOLOv11n"
+  enhancer: "retinexformer"
+
+enhancer_config:
+  repo_url: "https://github.com/caiyuanhao1998/Retinexformer.git"
+  weight_source: "google_drive"
+  weight_file: "LOL_v1.pth"
+  # RetinexFormer config
+  arch: "Retinexformer"
