@@ -180,6 +180,12 @@ def save_environment_info(output_dir: str) -> str:
 
     os.makedirs(output_dir, exist_ok=True)
 
+    gpu_memory_gb = None
+    if torch.cuda.is_available():
+        props = torch.cuda.get_device_properties(0)
+        total_mem = getattr(props, "total_memory", None) or getattr(props, "total_mem", 0)
+        gpu_memory_gb = round(total_mem / 1e9, 2)
+
     info = {
         "platform": platform.platform(),
         "python": platform.python_version(),
@@ -188,7 +194,7 @@ def save_environment_info(output_dir: str) -> str:
         "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
         "cudnn_version": str(torch.backends.cudnn.version()) if torch.cuda.is_available() else None,
         "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
-        "gpu_memory_gb": round(torch.cuda.get_device_properties(0).total_mem / 1e9, 2) if torch.cuda.is_available() else None,
+        "gpu_memory_gb": gpu_memory_gb,
     }
 
     # Save JSON
