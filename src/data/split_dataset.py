@@ -150,6 +150,25 @@ def load_split_file(split_path: str) -> List[Tuple[str, str]]:
     return entries
 
 
+def parse_split_file(
+    classlist_path: str,
+    output_dir: str,
+    verify: bool = True,
+) -> Dict[str, int]:
+    """Convenience wrapper: parse classlist, write splits, return counts.
+
+    Args:
+        classlist_path: Path to imageclasslist.txt
+        output_dir: Directory to write train.txt, val.txt, test.txt
+        verify: If True, verify counts match expected
+
+    Returns:
+        Dict with keys 'train', 'val', 'test' mapped to image counts.
+    """
+    splits = generate_split_files(classlist_path, output_dir, verify=verify)
+    return {k: len(v) for k, v in splits.items()}
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 3:
