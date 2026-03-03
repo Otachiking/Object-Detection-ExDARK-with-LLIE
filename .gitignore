@@ -24,7 +24,6 @@ env/
 
 # ==== Data & Outputs (large files, not tracked) ====
 outputs/
-data/
 runs/
 cache/
 *.pt
