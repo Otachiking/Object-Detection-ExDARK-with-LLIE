@@ -197,8 +197,13 @@ def save_config_snapshot(config: dict, output_dir: str) -> str:
 
 
 def save_environment_info(output_dir: str) -> str:
-    """Save environment info (GPU, CUDA, PyTorch, pip freeze) for reproducibility."""
+    """Save environment info (GPU, CUDA, PyTorch) for reproducibility.
+
+    pip freeze is written asynchronously in a background thread to avoid
+    blocking the notebook (it can take 30-60 s on Colab).
+    """
     import torch
+    import threading
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -219,19 +224,23 @@ def save_environment_info(output_dir: str) -> str:
         "gpu_memory_gb": gpu_memory_gb,
     }
 
-    # Save JSON
+    # Save JSON immediately (fast)
     info_path = os.path.join(output_dir, "system_info.json")
     with open(info_path, "w") as f:
         json.dump(info, f, indent=2)
 
-    # Save pip freeze
-    try:
-        freeze = subprocess.check_output(["pip", "freeze"], text=True)
-        freeze_path = os.path.join(output_dir, "requirements_frozen.txt")
-        with open(freeze_path, "w") as f:
-            f.write(freeze)
-    except Exception:
-        pass
+    # Save pip freeze asynchronously — avoids blocking the notebook
+    def _write_pip_freeze(out_dir: str) -> None:
+        try:
+            freeze = subprocess.check_output(["pip", "freeze"], text=True, timeout=120)
+            freeze_path = os.path.join(out_dir, "requirements_frozen.txt")
+            with open(freeze_path, "w") as f:
+                f.write(freeze)
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_write_pip_freeze, args=(output_dir,), daemon=True)
+    t.start()
 
     print(f"[ENV] System info saved: {info_path}")
     return info_path
