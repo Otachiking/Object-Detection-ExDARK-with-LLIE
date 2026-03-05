@@ -92,8 +92,11 @@ def compute_nr_metrics(
     seed: int = 42,
     device: str = "cuda",
     metrics: List[str] = None,
+    force: bool = False,
 ) -> dict:
     """Compute NR image quality metrics on a sample of images.
+
+    Skips computation if summary.json already exists (unless force=True).
 
     Args:
         images_dir: Directory with images to evaluate (e.g., test split)
@@ -104,10 +107,25 @@ def compute_nr_metrics(
         seed: Random seed for sampling
         device: 'cuda' or 'cpu'
         metrics: List of metrics to compute. Default: ["niqe", "brisque"]
+        force: If True, recompute even if results exist
 
     Returns:
         Summary dict with mean/std/median per metric
     """
+    # --- Skip logic ---
+    summary_path = os.path.join(output_dir, "summary.json")
+    if not force and os.path.exists(summary_path):
+        print(f"\n[SKIP] NR metrics already computed for {scenario_name}")
+        print(f"  Loaded from: {summary_path}")
+        print(f"  \u2192 To recompute, pass force=True")
+        with open(summary_path, "r") as f:
+            cached = json.load(f)
+        # Print cached summary
+        for col in ("niqe", "brisque", "loe"):
+            if f"{col}_mean" in cached:
+                print(f"  {col.upper()}: mean={cached[f'{col}_mean']:.4f}")
+        return cached
+
     if metrics is None:
         metrics = ["niqe", "brisque"]
 

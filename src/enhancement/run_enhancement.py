@@ -31,8 +31,11 @@ def enhance_dataset(
     yolo_labels_dir: str,
     splits: list = None,
     save_manifest: bool = True,
+    force: bool = False,
 ) -> dict:
     """Enhance all images in a YOLO-formatted dataset.
+
+    Resume-safe: skips images that already exist (unless force=True).
 
     Args:
         enhancer: Loaded BaseEnhancer instance
@@ -41,6 +44,7 @@ def enhance_dataset(
         yolo_labels_dir: Path to share labels from (ExDark_yolo/ root)
         splits: Which splits to process. Default: ["train", "val", "test"]
         save_manifest: Whether to save per-image manifest CSV
+        force: If True, re-enhance even if output exists
 
     Returns:
         Summary dict with counts and timing
@@ -58,6 +62,39 @@ def enhance_dataset(
         "total_failed": 0,
         "total_time_s": 0,
     }
+
+    # --- Overall skip check ---
+    if not force:
+        all_complete = True
+        for split in splits:
+            src_dir = os.path.join(source_dataset_dir, "images", split)
+            out_dir = os.path.join(output_dir, "images", split)
+            if not os.path.isdir(src_dir):
+                all_complete = False
+                break
+            expected = len([f for f in os.listdir(src_dir)
+                          if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
+            actual = len([f for f in os.listdir(out_dir)
+                         if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]) \
+                if os.path.isdir(out_dir) else 0
+            if actual < expected:
+                all_complete = False
+                break
+
+        if all_complete:
+            print(f"\n[SKIP] All enhanced images already exist for {enhancer.name}")
+            for split in splits:
+                out_dir = os.path.join(output_dir, "images", split)
+                n = len([f for f in os.listdir(out_dir)
+                        if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]) \
+                    if os.path.isdir(out_dir) else 0
+                summary["splits"][split] = {
+                    "total": n, "processed": 0, "skipped": n, "failed": 0, "time_s": 0,
+                }
+                summary["total_skipped"] += n
+                print(f"  {split}: {n} images ✓")
+            print(f"  → To re-enhance, pass force=True")
+            return summary
 
     manifest_rows = []
 
@@ -89,7 +126,7 @@ def enhance_dataset(
             dst_path = os.path.join(output_images_dir, fname)
 
             # Resume-safe: skip if output exists
-            if os.path.exists(dst_path):
+            if not force and os.path.exists(dst_path):
                 skipped += 1
                 continue
 

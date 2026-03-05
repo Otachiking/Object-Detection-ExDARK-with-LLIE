@@ -154,17 +154,42 @@ def parse_split_file(
     classlist_path: str,
     output_dir: str,
     verify: bool = True,
+    force: bool = False,
 ) -> Dict[str, int]:
     """Convenience wrapper: parse classlist, write splits, return counts.
+
+    Skips regeneration if split files already exist with correct counts
+    (unless force=True).
 
     Args:
         classlist_path: Path to imageclasslist.txt
         output_dir: Directory to write train.txt, val.txt, test.txt
         verify: If True, verify counts match expected
+        force: If True, regenerate even if splits already exist
 
     Returns:
         Dict with keys 'train', 'val', 'test' mapped to image counts.
     """
+    if not force:
+        expected_paths = {
+            split: os.path.join(output_dir, f"{split}.txt")
+            for split in ("train", "val", "test")
+        }
+        if all(os.path.exists(p) for p in expected_paths.values()):
+            counts = {}
+            for split, path in expected_paths.items():
+                with open(path, "r", encoding="utf-8") as f:
+                    counts[split] = sum(1 for line in f if line.strip())
+            if counts == EXPECTED_COUNTS:
+                print(f"[SKIP] Split files already exist with correct counts:")
+                for k, v in counts.items():
+                    print(f"  {k}: {v}")
+                print(f"  → To regenerate, pass force=True")
+                return counts
+            else:
+                print(f"[WARN] Split files exist but counts mismatch: {counts}")
+                print(f"  Expected: {EXPECTED_COUNTS} → Regenerating...")
+
     splits = generate_split_files(classlist_path, output_dir, verify=verify)
     return {k: len(v) for k, v in splits.items()}
 

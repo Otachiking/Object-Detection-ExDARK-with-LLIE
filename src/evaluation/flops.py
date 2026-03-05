@@ -122,8 +122,11 @@ def compute_all_flops(
     enhancer_name: Optional[str] = None,
     imgsz: int = 640,
     device: str = "cuda",
+    force: bool = False,
 ) -> dict:
     """Compute FLOPs for entire pipeline (enhancer + YOLO).
+
+    Skips computation if flops.json already exists (unless force=True).
 
     Args:
         yolo_weights: Path to YOLO weights
@@ -133,10 +136,22 @@ def compute_all_flops(
         enhancer_name: Name of enhancer
         imgsz: Input size
         device: Device
+        force: If True, recompute even if results exist
 
     Returns:
         Combined FLOPs dict
     """
+    # --- Skip logic ---
+    json_path = os.path.join(output_dir, "flops.json")
+    if not force and os.path.exists(json_path):
+        print(f"\n[SKIP] FLOPs results already exist for {scenario_name}")
+        print(f"  Loaded from: {json_path}")
+        print(f"  \u2192 To recompute, pass force=True")
+        with open(json_path, "r") as f:
+            cached = json.load(f)
+        print(f"  Total: {cached.get('total_gflops', 'N/A')} GFLOPs")
+        return cached
+
     os.makedirs(output_dir, exist_ok=True)
 
     results = {

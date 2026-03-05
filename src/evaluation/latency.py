@@ -34,8 +34,11 @@ def measure_latency(
     device: int = 0,
     imgsz: int = 640,
     seed: int = 42,
+    force: bool = False,
 ) -> dict:
     """Measure inference latency for a scenario.
+
+    Skips measurement if latency.json already exists (unless force=True).
 
     Args:
         yolo_weights: Path to YOLO best.pt
@@ -48,10 +51,22 @@ def measure_latency(
         device: GPU device
         imgsz: YOLO input size
         seed: Random seed for image selection
+        force: If True, re-measure even if results exist
 
     Returns:
         Latency statistics dict
     """
+    # --- Skip logic ---
+    json_path = os.path.join(output_dir, "latency.json")
+    if not force and os.path.exists(json_path):
+        print(f"\n[SKIP] Latency results already exist for {scenario_name}")
+        print(f"  Loaded from: {json_path}")
+        print(f"  \u2192 To re-measure, pass force=True")
+        with open(json_path, "r") as f:
+            cached = json.load(f)
+        print(f"  T_total: {cached.get('T_total_ms_mean', 0):.2f} ms")
+        return cached
+
     import random
     from ultralytics import YOLO
 

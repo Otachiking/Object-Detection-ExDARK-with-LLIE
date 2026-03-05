@@ -25,8 +25,11 @@ def train_yolo(
     output_dir: str,
     config: dict,
     resume: bool = False,
+    force: bool = False,
 ) -> dict:
     """Train YOLOv11n for a specific scenario.
+
+    Skips training if best.pt already exists (unless force=True).
 
     Args:
         dataset_yaml: Path to dataset.yaml (Ultralytics format)
@@ -34,12 +37,31 @@ def train_yolo(
         output_dir: Root output directory for runs
         config: Merged configuration dict (base + scenario)
         resume: Resume from last.pt if available
+        force: If True, retrain even if best.pt exists
 
     Returns:
         Training results dict
     """
     yolo_cfg = config.get("yolo", {})
     seed = config.get("seed", 42)
+
+    # --- Skip logic: check if training already completed ---
+    run_dir = os.path.join(output_dir, scenario_name)
+    best_pt = os.path.join(run_dir, "weights", "best.pt")
+    last_pt = os.path.join(run_dir, "weights", "last.pt")
+
+    if not force and os.path.exists(best_pt):
+        print(f"\n[SKIP] Training already complete for {scenario_name}")
+        print(f"  best.pt: {best_pt}")
+        print(f"  → To retrain, pass force=True or delete {run_dir}")
+        return {
+            "scenario": scenario_name,
+            "run_dir": run_dir,
+            "best_pt": best_pt,
+            "last_pt": last_pt if os.path.exists(last_pt) else None,
+            "epochs_requested": yolo_cfg.get("epochs", 100),
+            "skipped": True,
+        }
 
     # Set global seed
     set_global_seed(seed)

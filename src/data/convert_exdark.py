@@ -200,6 +200,7 @@ def convert_exdark_to_yolo(
     exdark_gt_dir: str,
     output_labels_dir: str,
     class_folders: Optional[List[str]] = None,
+    force: bool = False,
 ) -> dict:
     """Convert all ExDark annotations to YOLO format.
 
@@ -222,6 +223,7 @@ def convert_exdark_to_yolo(
         "total_labels": 0,
         "total_objects": 0,
         "failed": 0,
+        "skipped": 0,
         "warnings": [],
         "per_class_objects": {name: 0 for name in class_folders},
     }
@@ -258,10 +260,37 @@ def convert_exdark_to_yolo(
     summary["total_images"] = len(all_files)
     print(f"[CONVERT] Found {len(all_files)} images across {len(class_folders)} classes")
 
-    # Convert all
+    # --- Skip logic: check how many labels already exist ---
+    if not force:
+        existing_count = sum(1 for _, _, lp, _ in all_files if os.path.exists(lp))
+        if existing_count == len(all_files) and len(all_files) > 0:
+            # All labels exist → full skip
+            total_objects = 0
+            for _, _, lp, _ in all_files:
+                with open(lp, "r", encoding="utf-8") as f:
+                    total_objects += sum(1 for line in f if line.strip())
+            summary["total_labels"] = existing_count
+            summary["total_objects"] = total_objects
+            summary["skipped"] = existing_count
+            print(f"\n[SKIP] All {existing_count} YOLO labels already exist in {output_labels_dir}")
+            print(f"  Labels: {existing_count} | Objects: {total_objects}")
+            print(f"  → To reconvert, pass force=True or delete the labels directory.")
+            return summary
+        elif existing_count > 0:
+            print(f"[RESUME] {existing_count}/{len(all_files)} labels already exist, converting remaining...")
+
+    # Convert (with per-image skip for resume-safety)
     for image_path, annot_path, label_path, class_folder in tqdm(
         all_files, desc="Converting ExDark → YOLO"
     ):
+        # Per-image skip if label already exists
+        if not force and os.path.exists(label_path):
+            summary["skipped"] += 1
+            summary["total_labels"] += 1
+            with open(label_path, "r", encoding="utf-8") as f:
+                summary["total_objects"] += sum(1 for line in f if line.strip())
+            continue
+
         stats = convert_single_image(image_path, annot_path, label_path)
 
         if stats["success"]:
@@ -276,6 +305,7 @@ def convert_exdark_to_yolo(
     print(f"  Images: {summary['total_images']}")
     print(f"  Labels created: {summary['total_labels']}")
     print(f"  Total objects: {summary['total_objects']}")
+    print(f"  Skipped (already existed): {summary['skipped']}")
     print(f"  Failed: {summary['failed']}")
     if summary["warnings"]:
         print(f"  Warnings: {len(summary['warnings'])}")

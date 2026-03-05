@@ -33,8 +33,11 @@ def evaluate_yolo(
     iou: float = 0.7,
     device: int = 0,
     imgsz: int = 640,
+    force: bool = False,
 ) -> dict:
     """Evaluate YOLO model on test set.
+
+    Skips evaluation if metrics.json already exists (unless force=True).
 
     Args:
         weights_path: Path to best.pt
@@ -46,10 +49,24 @@ def evaluate_yolo(
         iou: NMS IoU threshold
         device: GPU device
         imgsz: Input image size
+        force: If True, re-evaluate even if results exist
 
     Returns:
         Dict with overall and per-class metrics
     """
+    # --- Skip logic ---
+    json_path = os.path.join(output_dir, "metrics.json")
+    if not force and os.path.exists(json_path):
+        print(f"\n[SKIP] Evaluation results already exist for {scenario_name}")
+        print(f"  Loaded from: {json_path}")
+        print(f"  → To re-evaluate, pass force=True")
+        with open(json_path, "r") as f:
+            cached = json.load(f)
+        overall = cached.get("overall", {})
+        print(f"  mAP@0.5: {overall.get('mAP_50', 0):.4f} | "
+              f"mAP@0.5:0.95: {overall.get('mAP_50_95', 0):.4f}")
+        return cached
+
     print(f"\n{'='*60}")
     print(f"[EVAL] Scenario: {scenario_name}")
     print(f"[EVAL] Weights: {weights_path}")

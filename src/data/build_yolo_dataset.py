@@ -61,8 +61,11 @@ def build_yolo_dataset(
     output_dir: str,
     target_size: int = 640,
     class_names: Optional[Dict[int, str]] = None,
+    force: bool = False,
 ) -> dict:
     """Build complete YOLO dataset structure from ExDark.
+
+    Resume-safe: skips images that already exist (unless force=True).
 
     Args:
         exdark_images_dir: ExDark images root (contains Bicycle/, Boat/, etc.)
@@ -71,6 +74,7 @@ def build_yolo_dataset(
         output_dir: Output root directory (will contain images/, labels/, dataset.yaml)
         target_size: Resize longest side to this value
         class_names: Dict mapping class_id → class_name
+        force: If True, overwrite existing files
 
     Returns:
         Summary statistics
@@ -83,6 +87,35 @@ def build_yolo_dataset(
         }
 
     summary = {"splits": {}, "errors": []}
+
+    # --- Overall skip check (all splits) ---
+    if not force:
+        all_complete = True
+        for split_name in ["train", "val", "test"]:
+            split_file = os.path.join(splits_dir, f"{split_name}.txt")
+            images_out = os.path.join(output_dir, "images", split_name)
+            if not os.path.exists(split_file) or not os.path.isdir(images_out):
+                all_complete = False
+                break
+            expected = len(load_split_file(split_file))
+            actual = len([f for f in os.listdir(images_out)
+                         if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
+            if actual < expected:
+                all_complete = False
+                break
+
+        if all_complete:
+            print(f"[SKIP] YOLO dataset already fully built in {output_dir}")
+            for split_name in ["train", "val", "test"]:
+                images_out = os.path.join(output_dir, "images", split_name)
+                n = len([f for f in os.listdir(images_out)
+                        if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
+                summary["splits"][split_name] = {
+                    "total": n, "processed": n, "skipped": 0,
+                }
+                print(f"  {split_name}: {n} images ✓")
+            print(f"  → To rebuild, pass force=True")
+            return summary
 
     for split_name in ["train", "val", "test"]:
         split_file = os.path.join(splits_dir, f"{split_name}.txt")
@@ -120,7 +153,7 @@ def build_yolo_dataset(
             dst_label = os.path.join(labels_out, label_stem + ".txt")
 
             # Skip if already processed (resume-safe)
-            if os.path.exists(dst_image) and os.path.exists(dst_label):
+            if not force and os.path.exists(dst_image) and os.path.exists(dst_label):
                 count_ok += 1
                 continue
 
