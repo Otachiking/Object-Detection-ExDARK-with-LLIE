@@ -36,7 +36,7 @@ local:
 
 # --- ExDark Structure (relative to exdark_original) ---
 exdark:
-  images_dir: "Dataset/ExDark"           # Contains Bicycle/, Boat/, ... Table/
+  images_dir: "Dataset"                  # Contains Bicycle/, Boat/, ... Table/
   groundtruth_dir: "Groundtruth"         # Contains Bicycle/, Boat/, ... Table/ + imageclasslist.txt
   classlist_file: "Groundtruth/imageclasslist.txt"
 

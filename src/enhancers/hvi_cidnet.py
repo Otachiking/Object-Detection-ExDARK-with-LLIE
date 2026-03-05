@@ -42,9 +42,15 @@ class HVICIDNetEnhancer(BaseEnhancer):
         print("[HVI-CIDNet] Repository cloned successfully")
 
     def _download_weights(self) -> str:
-        """Download Generalization weights from HuggingFace."""
+        """Download Generalization weights from HuggingFace.
+
+        The HF repo Fediory/HVI-CIDNet-Generalization contains:
+          - pytorch_model.bin  (state_dict)
+          - model.safetensors  (safetensors format)
+        We prefer pytorch_model.bin for widest compatibility.
+        """
         weights_dir = os.path.join(self.cache_dir, "weights")
-        weight_file = os.path.join(weights_dir, "net_rgb.pth")
+        weight_file = os.path.join(weights_dir, "pytorch_model.bin")
 
         if os.path.exists(weight_file):
             print(f"[HVI-CIDNet] Weights already exist: {weight_file}")
@@ -57,14 +63,18 @@ class HVICIDNetEnhancer(BaseEnhancer):
             from huggingface_hub import hf_hub_download
             downloaded = hf_hub_download(
                 repo_id="Fediory/HVI-CIDNet-Generalization",
-                filename="net_rgb.pth",
+                filename="pytorch_model.bin",
                 local_dir=weights_dir,
             )
-            print(f"[HVI-CIDNet] Weights downloaded: {downloaded}")
+            # hf_hub_download may place it in a subfolder; ensure it's at expected path
+            if not os.path.exists(weight_file) and os.path.exists(downloaded):
+                import shutil
+                shutil.move(downloaded, weight_file)
+            print(f"[HVI-CIDNet] Weights downloaded: {weight_file}")
             return weight_file
         except ImportError:
             # Fallback: direct URL download
-            url = "https://huggingface.co/Fediory/HVI-CIDNet-Generalization/resolve/main/net_rgb.pth"
+            url = "https://huggingface.co/Fediory/HVI-CIDNet-Generalization/resolve/main/pytorch_model.bin"
             import urllib.request
             print(f"[HVI-CIDNet] Downloading from: {url}")
             urllib.request.urlretrieve(url, weight_file)
