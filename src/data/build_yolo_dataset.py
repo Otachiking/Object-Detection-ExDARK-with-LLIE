@@ -193,9 +193,9 @@ def build_yolo_dataset(
         }
         print(f"  {split_name}: {count_ok} OK, {count_skip} skipped")
 
-    # Generate dataset.yaml
+    # Generate dataset.yaml (use relative path so it works on any machine)
     dataset_yaml = {
-        "path": output_dir,
+        "path": ".",
         "train": "images/train",
         "val": "images/val",
         "test": "images/test",
@@ -245,8 +245,9 @@ def generate_enhanced_dataset_yaml(
             8: "Dog", 9: "Motorbike", 10: "People", 11: "Table",
         }
 
+    # Use relative path so yaml is portable across machines
     dataset_yaml = {
-        "path": enhanced_images_dir,
+        "path": ".",
         "train": "images/train",
         "val": "images/val",
         "test": "images/test",
