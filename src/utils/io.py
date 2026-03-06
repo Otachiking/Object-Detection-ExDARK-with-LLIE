@@ -7,6 +7,7 @@ import shutil
 import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+from tqdm import tqdm
 
 
 def ensure_dir(path: str) -> str:
@@ -57,13 +58,17 @@ def write_text(text: str, path: str) -> str:
     return path
 
 
-def count_files(directory: str, extensions: Optional[List[str]] = None) -> int:
+def count_files(directory: str, extensions: Optional[List[str]] = None, verbose: bool = False) -> int:
     """Count files in directory (recursively) with optional extension filter."""
+    if verbose:
+        print(f"  Counting files in {directory}...")
     count = 0
     for root, _, files in os.walk(directory):
         for f in files:
             if extensions is None or any(f.lower().endswith(ext) for ext in extensions):
                 count += 1
+    if verbose:
+        print(f"  Found {count} files")
     return count
 
 
@@ -117,12 +122,18 @@ def safe_copy(src: str, dst: str, overwrite: bool = False) -> bool:
     return True
 
 
-def get_size_mb(path: str) -> float:
+def get_size_mb(path: str, verbose: bool = False) -> float:
     """Get file/directory size in MB."""
     if os.path.isfile(path):
         return os.path.getsize(path) / (1024 * 1024)
+    if verbose:
+        print(f"  Calculating size of {path}...")
     total = 0
+    all_files = []
     for root, _, files in os.walk(path):
         for f in files:
-            total += os.path.getsize(os.path.join(root, f))
+            all_files.append(os.path.join(root, f))
+    iterator = tqdm(all_files, desc="  Scanning size", unit="file") if verbose else all_files
+    for fp in iterator:
+        total += os.path.getsize(fp)
     return total / (1024 * 1024)

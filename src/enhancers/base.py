@@ -14,6 +14,7 @@ Contract:
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Optional
+from tqdm import tqdm
 
 
 class BaseEnhancer(ABC):
@@ -79,7 +80,7 @@ class BaseEnhancer(ABC):
 
         Override in subclass for batch-optimized inference.
         """
-        return [self.enhance_safe(img) for img in images]
+        return [self.enhance_safe(img) for img in tqdm(images, desc=f"  {self.name} batch", unit="img")]
 
     @property
     def is_loaded(self) -> bool:

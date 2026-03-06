@@ -90,6 +90,7 @@ def build_yolo_dataset(
 
     # --- Overall skip check (all splits) ---
     if not force:
+        print("[CHECK] Checking if YOLO dataset is already built...")
         all_complete = True
         for split_name in ["train", "val", "test"]:
             split_file = os.path.join(splits_dir, f"{split_name}.txt")
@@ -98,8 +99,10 @@ def build_yolo_dataset(
                 all_complete = False
                 break
             expected = len(load_split_file(split_file))
+            print(f"  Counting {split_name} images...")
             actual = len([f for f in os.listdir(images_out)
                          if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
+            print(f"  {split_name}: {actual}/{expected}")
             if actual < expected:
                 all_complete = False
                 break
@@ -268,9 +271,13 @@ def generate_enhanced_dataset_yaml(
             os.symlink(src_labels, dst_labels)
             print(f"[YAML] Symlinked labels: {dst_labels} → {src_labels}")
         except (OSError, NotImplementedError):
-            # Fallback: copy labels
-            shutil.copytree(src_labels, dst_labels)
-            print(f"[YAML] Copied labels: {src_labels} → {dst_labels}")
+            # Fallback: copy labels with progress
+            print(f"[YAML] Copying labels: {src_labels} → {dst_labels} ...")
+            os.makedirs(dst_labels, exist_ok=True)
+            label_files = [f for f in os.listdir(src_labels) if f.endswith(".txt")]
+            for lf in tqdm(label_files, desc=f"  Copying {split} labels", unit="file"):
+                shutil.copy2(os.path.join(src_labels, lf), os.path.join(dst_labels, lf))
+            print(f"[YAML] Copied {len(label_files)} label files")
 
     print(f"[YAML] Enhanced dataset.yaml: {output_yaml_path}")
     return output_yaml_path

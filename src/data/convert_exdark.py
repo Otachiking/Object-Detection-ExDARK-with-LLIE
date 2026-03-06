@@ -262,18 +262,18 @@ def convert_exdark_to_yolo(
 
     # --- Skip logic: check how many labels already exist ---
     if not force:
-        existing_count = sum(1 for _, _, lp, _ in all_files if os.path.exists(lp))
+        print(f"[CHECK] Checking existing labels in {output_labels_dir} ...")
+        existing_count = sum(
+            1 for _, _, lp, _ in tqdm(all_files, desc="Checking existing labels", unit="file")
+            if os.path.exists(lp)
+        )
         if existing_count == len(all_files) and len(all_files) > 0:
-            # All labels exist → full skip
-            total_objects = 0
-            for _, _, lp, _ in all_files:
-                with open(lp, "r", encoding="utf-8") as f:
-                    total_objects += sum(1 for line in f if line.strip())
+            # All labels exist → full skip (skip object counting for speed)
             summary["total_labels"] = existing_count
-            summary["total_objects"] = total_objects
+            summary["total_objects"] = -1  # not counted for speed
             summary["skipped"] = existing_count
             print(f"\n[SKIP] All {existing_count} YOLO labels already exist in {output_labels_dir}")
-            print(f"  Labels: {existing_count} | Objects: {total_objects}")
+            print(f"  Labels: {existing_count} | Objects: (skipped counting for speed)")
             print(f"  → To reconvert, pass force=True or delete the labels directory.")
             return summary
         elif existing_count > 0:

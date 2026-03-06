@@ -97,7 +97,7 @@ def measure_latency(
     # Load images into memory first (exclude I/O from timing)
     print("[LATENCY] Loading images into memory...")
     images = []
-    for fname in selected:
+    for fname in tqdm(selected, desc="  Loading images", unit="img"):
         img = cv2.imread(os.path.join(test_images_dir, fname))
         if img is not None:
             images.append(img)
@@ -108,7 +108,7 @@ def measure_latency(
     print(f"[LATENCY] Warming up ({warmup} iterations)...")
     dummy = images[0] if images else np.zeros((640, 640, 3), dtype=np.uint8)
 
-    for _ in range(warmup):
+    for _ in tqdm(range(warmup), desc="  Warmup", unit="iter"):
         if enhancer:
             _ = enhancer.enhance(dummy)
         _ = model(dummy, imgsz=imgsz, verbose=False)

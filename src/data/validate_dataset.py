@@ -19,6 +19,7 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from collections import Counter
+from tqdm import tqdm
 
 
 CLASS_NAMES = {
@@ -114,7 +115,7 @@ def validate_yolo_dataset(
 
         # Validate each label
         matched_stems = image_stems & label_stems
-        for stem in matched_stems:
+        for stem in tqdm(sorted(matched_stems), desc=f"  Validating {split}", unit="label"):
             label_path = os.path.join(labels_dir, label_files[stem])
 
             with open(label_path, "r") as f:
@@ -207,13 +208,15 @@ def _generate_previews(
         if not os.path.isdir(images_dir):
             continue
 
-        for f in os.listdir(images_dir):
-            if f.lower().endswith((".jpg", ".jpeg", ".png")):
-                stem = os.path.splitext(f)[0]
-                img_path = os.path.join(images_dir, f)
-                lbl_path = os.path.join(labels_dir, stem + ".txt")
-                if os.path.exists(lbl_path):
-                    pairs.append((img_path, lbl_path, split))
+        print(f"  Collecting {split} preview candidates...")
+        img_list = [f for f in os.listdir(images_dir)
+                    if f.lower().endswith((".jpg", ".jpeg", ".png"))]
+        for f in tqdm(img_list, desc=f"  Scanning {split}", unit="file"):
+            stem = os.path.splitext(f)[0]
+            img_path = os.path.join(images_dir, f)
+            lbl_path = os.path.join(labels_dir, stem + ".txt")
+            if os.path.exists(lbl_path):
+                pairs.append((img_path, lbl_path, split))
 
     if not pairs:
         return

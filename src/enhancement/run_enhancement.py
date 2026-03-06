@@ -65,6 +65,7 @@ def enhance_dataset(
 
     # --- Overall skip check ---
     if not force:
+        print(f"[CHECK] Checking existing enhanced images for {enhancer.name}...")
         all_complete = True
         for split in splits:
             src_dir = os.path.join(source_dataset_dir, "images", split)
@@ -72,11 +73,14 @@ def enhance_dataset(
             if not os.path.isdir(src_dir):
                 all_complete = False
                 break
+            print(f"  Counting {split} source images...")
             expected = len([f for f in os.listdir(src_dir)
                           if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
+            print(f"  Counting {split} enhanced images...")
             actual = len([f for f in os.listdir(out_dir)
                          if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]) \
                 if os.path.isdir(out_dir) else 0
+            print(f"  {split}: {actual}/{expected}")
             if actual < expected:
                 all_complete = False
                 break
@@ -205,6 +209,7 @@ def enhance_dataset(
     print(f"\n[ENHANCE] === {enhancer.name} Summary ===")
     for split, stats in summary["splits"].items():
         out_dir = os.path.join(output_dir, "images", split)
+        print(f"  Validating {split} output count...")
         actual = len([f for f in os.listdir(out_dir)
                       if f.lower().endswith((".jpg", ".jpeg", ".png"))])
         expected = stats["total"]
