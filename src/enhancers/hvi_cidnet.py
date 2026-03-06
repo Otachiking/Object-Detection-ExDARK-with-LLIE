@@ -142,9 +142,9 @@ class HVICIDNetEnhancer(BaseEnhancer):
         img_tensor = torch.from_numpy(img_rgb).float().permute(2, 0, 1).unsqueeze(0) / 255.0
         img_tensor = img_tensor.to(self.device)
 
-        # Pad to multiple of 4 (some conv architectures require this)
-        pad_h = (4 - h % 4) % 4
-        pad_w = (4 - w % 4) % 4
+        # Pad to multiple of 8 (CIDNet has 3 downsampling stages → needs 2^3=8)
+        pad_h = (8 - h % 8) % 8
+        pad_w = (8 - w % 8) % 8
         if pad_h > 0 or pad_w > 0:
             img_tensor = torch.nn.functional.pad(img_tensor, (0, pad_w, 0, pad_h), mode='reflect')
 
