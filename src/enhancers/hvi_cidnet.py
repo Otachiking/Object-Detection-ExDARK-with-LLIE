@@ -81,13 +81,14 @@ class HVICIDNetEnhancer(BaseEnhancer):
             print(f"[HVI-CIDNet] Weights saved: {weight_file}")
             return weight_file
 
-    def load_model(self, device: str = "cuda") -> None:
+    def load_model(self, device: str = None) -> None:
         """Load HVI-CIDNet model with Generalization weights.
 
         Args:
-            device: 'cuda' or 'cpu'
+            device: 'cuda', 'cpu', or None (auto-detect)
         """
-        self.device = device
+        from src.enhancers.base import _auto_device
+        self.device = _auto_device(device)
 
         # Clone repo and download weights
         self._clone_repo()

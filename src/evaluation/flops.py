@@ -72,7 +72,7 @@ def compute_enhancer_flops(
     enhancer_name: str,
     model: torch.nn.Module,
     imgsz: int = 640,
-    device: str = "cuda",
+    device: str = None,
 ) -> dict:
     """Compute FLOPs for an enhancer model.
 
@@ -80,11 +80,13 @@ def compute_enhancer_flops(
         enhancer_name: Name of enhancer
         model: PyTorch model
         imgsz: Input size
-        device: Device
+        device: Device (auto-detected if None)
 
     Returns:
         Dict with FLOPs info
     """
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     results = {
         "model": enhancer_name,
         "input_size": f"{imgsz}x{imgsz}",
@@ -121,7 +123,7 @@ def compute_all_flops(
     enhancer_model: Optional[torch.nn.Module] = None,
     enhancer_name: Optional[str] = None,
     imgsz: int = 640,
-    device: str = "cuda",
+    device: str = None,
     force: bool = False,
 ) -> dict:
     """Compute FLOPs for entire pipeline (enhancer + YOLO).
@@ -135,12 +137,14 @@ def compute_all_flops(
         enhancer_model: PyTorch enhancer model (None for S1)
         enhancer_name: Name of enhancer
         imgsz: Input size
-        device: Device
+        device: Device (auto-detected if None)
         force: If True, recompute even if results exist
 
     Returns:
         Combined FLOPs dict
     """
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     # --- Skip logic ---
     json_path = os.path.join(output_dir, "flops.json")
     if not force and os.path.exists(json_path):

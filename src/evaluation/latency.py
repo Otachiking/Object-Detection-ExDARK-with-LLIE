@@ -48,7 +48,7 @@ def measure_latency(
         enhancer: Loaded enhancer (None for S1 baseline)
         num_images: Number of images to measure
         warmup: Warmup iterations before timing
-        device: GPU device
+        device: GPU device (auto-detected if CUDA unavailable)
         imgsz: YOLO input size
         seed: Random seed for image selection
         force: If True, re-measure even if results exist
@@ -56,6 +56,9 @@ def measure_latency(
     Returns:
         Latency statistics dict
     """
+    # Auto-detect device
+    if not torch.cuda.is_available():
+        device = "cpu"
     # --- Skip logic ---
     json_path = os.path.join(output_dir, "latency.json")
     if not force and os.path.exists(json_path):

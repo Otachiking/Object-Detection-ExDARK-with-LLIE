@@ -65,9 +65,10 @@ class RetinexFormerEnhancer(BaseEnhancer):
 
         return weight_file
 
-    def load_model(self, device: str = "cuda") -> None:
+    def load_model(self, device: str = None) -> None:
         """Load RetinexFormer model with LOL_v1 weights."""
-        self.device = device
+        from src.enhancers.base import _auto_device
+        self.device = _auto_device(device)
 
         self._clone_repo()
         self.weight_path = self._download_weights()

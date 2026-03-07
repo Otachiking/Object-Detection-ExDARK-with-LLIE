@@ -12,9 +12,17 @@ Contract:
 """
 
 import numpy as np
+import torch
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from tqdm import tqdm
+
+
+def _auto_device(device: str = None) -> str:
+    """Return 'cuda' if available, else 'cpu'."""
+    if device is None:
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    return device
 
 
 class BaseEnhancer(ABC):
@@ -27,11 +35,11 @@ class BaseEnhancer(ABC):
         self._loaded = False
 
     @abstractmethod
-    def load_model(self, device: str = "cuda") -> None:
+    def load_model(self, device: str = None) -> None:
         """Load pretrained weights and initialize model.
 
         Args:
-            device: 'cuda' or 'cpu'
+            device: 'cuda', 'cpu', or None (auto-detect)
         """
         pass
 
