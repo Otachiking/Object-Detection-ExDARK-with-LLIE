@@ -275,8 +275,8 @@ print(f"  Recall       : {overall.get('recall',0):.4f}")
 
 per_cls = results.get("per_class", {})
 if per_cls:
-    cls_rows = [{"Class": k, "AP@0.5": f"{v:.4f}"} for k, v in per_cls.items()]
-    import pandas as pd
+    def _ap(v): return v.get("mAP_50", 0) if isinstance(v, dict) else float(v)
+    cls_rows = [{"Class": k, "AP@0.5": f"{_ap(v):.4f}"} for k, v in per_cls.items()]
     display(pd.DataFrame(cls_rows).set_index("Class").T)
 """
 
@@ -702,7 +702,8 @@ for sn in completed_names:
 
     # Try to load per-class APs for bootstrap
     per_cls = all_per_cls.get(sn, {})
-    cls_aps = list(per_cls.values()) if per_cls else [point_est]
+    def _ap(v): return v.get("mAP_50", 0) if isinstance(v, dict) else float(v)
+    cls_aps = [_ap(v) for v in per_cls.values()] if per_cls else [point_est]
 
     # Bootstrap over per-class APs → mean of sampled classes
     cls_aps_arr = np.array(cls_aps, dtype=float)
@@ -763,8 +764,9 @@ else:
     rows = {}
     for sn in completed_names:
         row = {}
+        def _ap(v): return v.get("mAP_50", float("nan")) if isinstance(v, dict) else float(v)
         for cls in CLASSES:
-            row[cls] = round(all_per_cls.get(sn, {}).get(cls, float("nan")), 4)
+            row[cls] = round(_ap(all_per_cls.get(sn, {}).get(cls, float("nan"))), 4)
         rows[SCENARIO_LABELS.get(sn, sn)] = row
 
     df_pcls = pd.DataFrame(rows).T   # scenarios × classes
@@ -783,11 +785,12 @@ else:
     print(f"Saved: {hm_path}")
 
     # ── Indoor vs Outdoor grouped bar ──────────────────────────
+    def _ap(v): return v.get("mAP_50", float("nan")) if isinstance(v, dict) else float(v)
     group_rows = []
     for sn in completed_names:
         pc = all_per_cls.get(sn, {})
-        outdoor_ap = [pc.get(c, float("nan")) for c in OUTDOOR_CLASSES]
-        indoor_ap  = [pc.get(c, float("nan")) for c in INDOOR_CLASSES]
+        outdoor_ap = [_ap(pc.get(c, float("nan"))) for c in OUTDOOR_CLASSES]
+        indoor_ap  = [_ap(pc.get(c, float("nan"))) for c in INDOOR_CLASSES]
         group_rows.append({
             "Scenario" : SCENARIO_LABELS.get(sn, sn),
             "Outdoor AP (mean)": round(float(np.nanmean(outdoor_ap)), 4),
