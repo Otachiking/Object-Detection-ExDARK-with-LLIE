@@ -515,9 +515,6 @@ SCENARIO_LABELS = {
 }
 
 CLASSES = ["Bicycle","Boat","Bottle","Bus","Car","Cat","Chair","Cup","Dog","Motorbike","People","Table"]
-OUTDOOR_CLASSES = {"Bicycle","Boat","Bus","Car","Motorbike"}
-INDOOR_CLASSES  = {"Bottle","Chair","Cup","Cat","Dog","Table"}
-MIXED_CLASSES   = {"People"}
 
 print(f"Output root: {OUTPUT_ROOT}")
 os.makedirs(OUTPUT_ROOT, exist_ok=True)
@@ -746,13 +743,14 @@ else:
     print("⚠ Tidak ada data evaluasi. Jalankan scenario notebooks dulu.")
 """, "cell-7d"),
 
-    md("---\n## Fase 7e: Per-Class & Indoor/Outdoor Analysis", "md-7e"),
+    md("---\n## Fase 7e: Per-Class AP Analysis", "md-7e"),
     code("""\
-#@title Fase 7e · Per-Class AP Heatmap + Indoor vs Outdoor
+#@title Fase 7e · Per-Class AP Heatmap & Bar Chart
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 figures_dir = os.path.join(OUTPUT_ROOT, "summary", "figures")
 os.makedirs(figures_dir, exist_ok=True)
@@ -760,22 +758,23 @@ os.makedirs(figures_dir, exist_ok=True)
 if not all_per_cls:
     print("⚠ Tidak ada per-class data. Pastikan evaluate_yolo menyimpan per_class.")
 else:
-    # ── Per-class AP heatmap ────────────────────────────────────
+    def _ap(v): return v.get("mAP_50", float("nan")) if isinstance(v, dict) else float(v)
+
+    # ── Build per-class dataframe (scenarios × classes) ─────────
     rows = {}
     for sn in completed_names:
-        row = {}
-        def _ap(v): return v.get("mAP_50", float("nan")) if isinstance(v, dict) else float(v)
-        for cls in CLASSES:
-            row[cls] = round(_ap(all_per_cls.get(sn, {}).get(cls, float("nan"))), 4)
-        rows[SCENARIO_LABELS.get(sn, sn)] = row
+        rows[SCENARIO_LABELS.get(sn, sn)] = {
+            cls: round(_ap(all_per_cls.get(sn, {}).get(cls, float("nan"))), 4)
+            for cls in CLASSES
+        }
+    df_pcls = pd.DataFrame(rows).T
 
-    df_pcls = pd.DataFrame(rows).T   # scenarios × classes
-
-    fig, ax = plt.subplots(figsize=(14, max(3, len(completed_names)+1)))
+    # ── 1. Heatmap ──────────────────────────────────────────────
+    fig, ax = plt.subplots(figsize=(14, max(3, len(completed_names) + 1)))
     sns.heatmap(df_pcls.astype(float), annot=True, fmt=".3f", cmap="RdYlGn",
                 linewidths=0.5, ax=ax, vmin=0, vmax=1,
-                cbar_kws={"label":"AP@0.5"})
-    ax.set_title("Per-Class AP@0.5 by Scenario", fontsize=14, fontweight="bold")
+                cbar_kws={"label": "AP@0.5"})
+    ax.set_title("Per-Class AP@0.5 Heatmap", fontsize=14, fontweight="bold")
     ax.set_ylabel("")
     ax.set_xlabel("")
     plt.tight_layout()
@@ -784,42 +783,48 @@ else:
     plt.show()
     print(f"Saved: {hm_path}")
 
-    # ── Indoor vs Outdoor grouped bar ──────────────────────────
-    def _ap(v): return v.get("mAP_50", float("nan")) if isinstance(v, dict) else float(v)
-    group_rows = []
-    for sn in completed_names:
-        pc = all_per_cls.get(sn, {})
-        outdoor_ap = [_ap(pc.get(c, float("nan"))) for c in OUTDOOR_CLASSES]
-        indoor_ap  = [_ap(pc.get(c, float("nan"))) for c in INDOOR_CLASSES]
-        group_rows.append({
-            "Scenario" : SCENARIO_LABELS.get(sn, sn),
-            "Outdoor AP (mean)": round(float(np.nanmean(outdoor_ap)), 4),
-            "Indoor  AP (mean)": round(float(np.nanmean(indoor_ap)),  4),
-        })
+    # ── 2. Grouped bar chart (class × scenario) ─────────────────
+    x     = np.arange(len(CLASSES))
+    width = 0.8 / max(len(completed_names), 1)
+    colors = ["#4C72B0", "#DD8452", "#55A868", "#C44E52"]
 
-    df_env = pd.DataFrame(group_rows).set_index("Scenario")
-    print("\\n=== Indoor vs Outdoor AP Comparison ===")
-    print("Outdoor classes:", sorted(OUTDOOR_CLASSES))
-    print("Indoor  classes:", sorted(INDOOR_CLASSES))
-    display(df_env)
+    fig2, ax2 = plt.subplots(figsize=(16, 5))
+    for i, sn in enumerate(completed_names):
+        vals = [_ap(all_per_cls.get(sn, {}).get(cls, float("nan"))) for cls in CLASSES]
+        offset = (i - len(completed_names) / 2 + 0.5) * width
+        ax2.bar(x + offset, vals, width=width * 0.9,
+                label=SCENARIO_LABELS.get(sn, sn),
+                color=colors[i % len(colors)], alpha=0.85)
 
-    fig2, ax2 = plt.subplots(figsize=(8, 4))
-    df_env.plot(kind="bar", ax=ax2, rot=30, color=["#4C72B0","#DD8452"])
-    ax2.set_ylabel("Mean AP@0.5")
-    ax2.set_title("Outdoor vs Indoor Object Detection Performance")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(CLASSES, rotation=30, ha="right", fontsize=10)
+    ax2.set_ylabel("AP@0.5")
     ax2.set_ylim(0, 1)
-    ax2.legend(loc="lower right")
+    ax2.set_title("Per-Class AP@0.5 Comparison Across Scenarios", fontsize=13, fontweight="bold")
+    ax2.legend(loc="upper right", fontsize=9)
+    ax2.grid(axis="y", alpha=0.3)
     plt.tight_layout()
-    env_path = os.path.join(figures_dir, "indoor_outdoor_comparison.png")
-    plt.savefig(env_path, dpi=150, bbox_inches="tight")
+    bar_path = os.path.join(figures_dir, "perclass_bar.png")
+    plt.savefig(bar_path, dpi=150, bbox_inches="tight")
     plt.show()
-    print(f"Saved: {env_path}")
+    print(f"Saved: {bar_path}")
 
-    # ── Insight ────────────────────────────────────────────────
-    print("\\nInsight:")
-    print("  LLIE yang efektif pada low-light outdoor scene")
-    print("  seharusnya menunjukkan peningkatan lebih besar pada Outdoor AP.")
-    print("  Jika Indoor AP justru lebih tinggi, mungkin enhancer over-expose indoor gambar.")
+    # ── 3. Delta table: each LLIE vs S1_Raw ─────────────────────
+    if "S1_Raw" in completed_names and len(completed_names) > 1:
+        print("\\n=== Delta AP@0.5 vs S1_Raw (Baseline) ===")
+        base = {cls: _ap(all_per_cls.get("S1_Raw", {}).get(cls, float("nan")))
+                for cls in CLASSES}
+        delta_rows = []
+        for sn in completed_names:
+            if sn == "S1_Raw": continue
+            row = {"Scenario": SCENARIO_LABELS.get(sn, sn)}
+            for cls in CLASSES:
+                v = _ap(all_per_cls.get(sn, {}).get(cls, float("nan")))
+                row[cls] = round(v - base[cls], 4)
+            delta_rows.append(row)
+        if delta_rows:
+            df_delta = pd.DataFrame(delta_rows).set_index("Scenario")
+            display(df_delta.style.background_gradient(cmap="RdYlGn", vmin=-0.1, vmax=0.1))
 """, "cell-7e"),
 
     md("---\n## Fase 7f: Visual Detection Comparison", "md-7f"),
