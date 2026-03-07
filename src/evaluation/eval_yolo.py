@@ -11,9 +11,12 @@ Confidence threshold locked at 0.001 (Ultralytics default) for fair comparison.
 
 import os
 import json
+import torch
 import pandas as pd
 from typing import Dict, Optional
 from ultralytics import YOLO
+
+from src.utils.io import patch_dataset_yaml_path
 
 
 CLASS_NAMES = {
@@ -66,6 +69,11 @@ def evaluate_yolo(
         print(f"  mAP@0.5: {overall.get('mAP_50', 0):.4f} | "
               f"mAP@0.5:0.95: {overall.get('mAP_50_95', 0):.4f}")
         return cached
+
+    device = 0 if torch.cuda.is_available() else "cpu"
+
+    # --- Defensive: ensure dataset.yaml uses absolute path (fixes Windows path issue) ---
+    patch_dataset_yaml_path(dataset_yaml)
 
     print(f"\n{'='*60}")
     print(f"[EVAL] Scenario: {scenario_name}")

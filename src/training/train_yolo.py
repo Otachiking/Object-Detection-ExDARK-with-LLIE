@@ -10,6 +10,7 @@ Ensures:
 import os
 import json
 import yaml
+import torch
 from pathlib import Path
 from typing import Optional
 
@@ -17,6 +18,7 @@ from ultralytics import YOLO
 
 from src.seed import set_global_seed
 from src.config import save_config_snapshot, save_environment_info
+from src.utils.io import patch_dataset_yaml_path
 
 
 def train_yolo(
@@ -87,6 +89,9 @@ def train_yolo(
     print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolo11n.pt')}")
     print(f"{'='*60}\n")
 
+    # --- Defensive: ensure dataset.yaml uses absolute path (fixes Windows path issue) ---
+    patch_dataset_yaml_path(dataset_yaml)
+
     # Initialize YOLO model
     model_name = yolo_cfg.get("model", "yolo11n.pt")
     model = YOLO(model_name)
@@ -102,7 +107,7 @@ def train_yolo(
         project=project_dir,
         name=run_name,
         exist_ok=yolo_cfg.get("exist_ok", True),
-        device=yolo_cfg.get("device", 0),
+        device=0 if torch.cuda.is_available() else "cpu",
         workers=yolo_cfg.get("workers", 2),
         pretrained=yolo_cfg.get("pretrained", True),
         resume=resume,
