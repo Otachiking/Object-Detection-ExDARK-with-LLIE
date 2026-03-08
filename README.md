@@ -37,8 +37,17 @@ This repository implements an end-to-end pipeline to evaluate **Low-Light Image 
 ## Quick Start (Google Colab)
 
 1. Upload ExDark to Google Drive: `My Drive/KULIAH-S1INFORMATIKA/TA-IQBAL/data/Exdark_original/`
-2. Open `notebooks/master_pipeline.ipynb` in Google Colab
-3. Run cells sequentially (each cell is idempotent and resume-safe)
+2. Open any scenario notebook (e.g. `notebooks/scenario_s1_raw.ipynb`) in Google Colab
+3. Run cells sequentially — each cell is idempotent and resume-safe
+4. After all 4 scenarios complete, open `notebooks/comparison.ipynb` for cross-scenario analysis
+
+### Flags
+
+| Flag | Where | Effect |
+|------|-------|--------|
+| `QUICK_TEST = True` | Cell 0.1 | 1-epoch training for fast validation |
+| `FORCE_RETRAIN = True` | Fase 3 | Delete previous run and retrain from scratch |
+| `FORCE_EVALUATION = True` | Fase 4 | Re-compute all evaluation metrics |
 
 ## Environment
 
@@ -46,19 +55,47 @@ This repository implements an end-to-end pipeline to evaluate **Low-Light Image 
 - Python 3.10+, PyTorch 2.x, Ultralytics 8.3+
 - Seed: 42 (global reproducibility)
 
+## Google Drive Output Structure
+
+```
+TA-IQBAL/                             # Drive root
+├── data/Exdark_original/             # Source ExDark dataset (uploaded manually)
+├── model_cache/                      # LLIE pretrained weights (auto-downloaded)
+├── prepared/                         # Shared data preparation (Fase 1)
+│   ├── ExDark_yolo/                  # YOLO-format dataset (images + labels + dataset.yaml)
+│   ├── ExDark_yolo_labels/           # Intermediate converted annotations
+│   └── splits/                       # train.txt, val.txt, test.txt
+└── scenarios/                        # Per-scenario outputs
+    ├── S1_Raw/
+    │   ├── runs/                     # Training output (weights/best.pt, results.csv)
+    │   └── evaluation/               # metrics.json, flops.json, latency.json, etc.
+    ├── S2_HVI_CIDNet/
+    │   ├── enhanced/                 # Enhanced images (YOLO structure)
+    │   ├── runs/
+    │   └── evaluation/
+    ├── S3_RetinexFormer/
+    │   ├── enhanced/
+    │   ├── runs/
+    │   └── evaluation/
+    └── S4_LYT_Net/
+        ├── enhanced/
+        ├── runs/
+        └── evaluation/
+```
+
 ## Project Structure
 
 ```
 ├── configs/          # YAML configs (base + per-scenario)
-├── notebooks/        # Colab orchestrator notebook
+├── notebooks/        # Scenario Colab notebooks (1 per scenario) + comparison
 ├── src/
-│   ├── data/         # ExDark → YOLO conversion, split, validation
+│   ├── data/         # ExDark → YOLO conversion, split
 │   ├── enhancers/    # LLIE model wrappers (plug & play)
 │   ├── enhancement/  # Batch enhancement pipeline
 │   ├── training/     # YOLOv11n training wrapper
 │   ├── evaluation/   # Detection eval, NR metrics, latency, FLOPs, correlation
 │   └── utils/        # I/O, timing, visualization, logging
-└── scripts/          # CLI entry points
+└── scripts/          # CLI entry points & notebook patchers
 ```
 
 ## License

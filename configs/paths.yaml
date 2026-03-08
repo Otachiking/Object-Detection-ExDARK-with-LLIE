@@ -1,6 +1,26 @@
 # =============================================================================
 # Path Configuration — Auto-detects Colab vs Local
 # =============================================================================
+#
+# Google Drive layout (Colab):
+#   TA-IQBAL/
+#     data/Exdark_original/        -- source ExDark dataset
+#     model_cache/                  -- LLIE pretrained weights
+#     prepared/                     -- shared YOLO-format dataset & splits
+#       ExDark_yolo/
+#       ExDark_yolo_labels/
+#       splits/
+#     scenarios/                    -- per-scenario outputs
+#       S1_Raw/
+#         runs/                     -- training output (Ultralytics)
+#         evaluation/               -- metrics.json, flops.json, latency.json, ...
+#       S2_HVI_CIDNet/
+#         enhanced/                 -- enhanced images (YOLO structure)
+#         runs/
+#         evaluation/
+#       S3_RetinexFormer/  ...
+#       S4_LYT_Net/        ...
+# =============================================================================
 
 # Google Colab (primary execution environment)
 colab:
@@ -9,14 +29,8 @@ colab:
 
   data:
     exdark_original: "${drive_root}/data/Exdark_original"
-    exdark_yolo: "${drive_root}/data/ExDark_yolo"
-    exdark_enhanced: "${drive_root}/data/ExDark_enhanced"
-    splits: "${drive_root}/data/splits"
 
-  runs: "${drive_root}/runs"
-  results: "${drive_root}/results"
-  cache: "${drive_root}/cache"
-  env: "${drive_root}/env"
+  model_cache: "${drive_root}/model_cache"
 
 # Local development (Windows)
 local:
@@ -25,14 +39,8 @@ local:
 
   data:
     exdark_original: "${drive_root}/DATASET/ExDark - REPO"
-    exdark_yolo: "${project_root}/outputs/ExDark_yolo"
-    exdark_enhanced: "${project_root}/outputs/ExDark_enhanced"
-    splits: "${project_root}/outputs/splits"
 
-  runs: "${project_root}/outputs/runs"
-  results: "${project_root}/outputs/results"
-  cache: "${project_root}/outputs/cache"
-  env: "${project_root}/outputs/env"
+  model_cache: "${project_root}/outputs/model_cache"
 
 # --- ExDark Structure (relative to exdark_original) ---
 exdark:

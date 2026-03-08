@@ -1,0 +1,843 @@
+"""
+Patch v3: Major restructure
+1. New output folder structure (per-scenario)
+2. Remove validation from Fase 1
+3. Add FORCE_EVALUATION
+4. Update all path references in all 4 scenario notebooks
+"""
+import json
+import glob
+import copy
+import os
+
+NOTEBOOKS_DIR = os.path.join(os.path.dirname(__file__), "..", "notebooks")
+
+SCENARIOS = {
+    "scenario_s1_raw.ipynb": {
+        "key": "s1_raw",
+        "name": "S1_Raw",
+        "has_enhancement": False,
+        "enhancer_name": None,
+    },
+    "scenario_s2_hvi_cidnet.ipynb": {
+        "key": "s2_hvi_cidnet",
+        "name": "S2_HVI_CIDNet",
+        "has_enhancement": True,
+        "enhancer_name": "hvi_cidnet",
+    },
+    "scenario_s3_retinexformer.ipynb": {
+        "key": "s3_retinexformer",
+        "name": "S3_RetinexFormer",
+        "has_enhancement": True,
+        "enhancer_name": "retinexformer",
+    },
+    "scenario_s4_lyt_net.ipynb": {
+        "key": "s4_lyt_net",
+        "name": "S4_LYT_Net",
+        "has_enhancement": True,
+        "enhancer_name": "lyt_net",
+    },
+}
+
+def _lines(text):
+    """Convert multi-line string to list of lines with newlines."""
+    return [line + "\n" for line in text.strip().split("\n")]
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  CELL TEMPLATES
+# ═══════════════════════════════════════════════════════════════════
+
+SETUP_CONFIG_CODE = r'''#@title 0.3 · Load Configuration & Define Paths
+from src.config import load_config, save_environment_info
+from src.seed import set_global_seed
+
+cfg = load_config(SCENARIO_KEY, quick_test=QUICK_TEST)
+set_global_seed(cfg["seed"])
+
+paths      = cfg.get("paths", {})
+data_paths = paths.get("data", {})
+
+OUTPUT_ROOT = paths.get("output_root") or paths.get("drive_root") or paths.get("project_root")
+EXDARK_ROOT = paths.get("exdark_root") or data_paths.get("exdark_original")
+
+if OUTPUT_ROOT is None: raise KeyError("Cannot resolve OUTPUT_ROOT from config")
+if EXDARK_ROOT is None: raise KeyError("Cannot resolve EXDARK_ROOT from config")
+
+cfg["paths"]["output_root"]  = OUTPUT_ROOT
+cfg["paths"]["exdark_root"]  = EXDARK_ROOT
+if "exdark_structure" not in cfg["paths"]:
+    m = cfg.get("paths_meta", {}).get("exdark", {})
+    cfg["paths"]["exdark_structure"] = {
+        "images":      m.get("images_dir",      "Dataset"),
+        "groundtruth": m.get("groundtruth_dir",  "Groundtruth"),
+        "classlist":   m.get("classlist_file",   "Groundtruth/imageclasslist.txt"),
+    }
+
+# ── NEW: Per-scenario directory layout ──────────────────────────
+PREPARED_DIR   = os.path.join(OUTPUT_ROOT, "prepared")
+SCENARIO_DIR   = os.path.join(OUTPUT_ROOT, "scenarios", SCENARIO_NAME)
+SCENARIO_RUNS  = os.path.join(SCENARIO_DIR, "runs")
+SCENARIO_EVAL  = os.path.join(SCENARIO_DIR, "evaluation")
+
+os.makedirs(PREPARED_DIR, exist_ok=True)
+os.makedirs(SCENARIO_RUNS, exist_ok=True)
+os.makedirs(SCENARIO_EVAL, exist_ok=True)
+
+print(f"Output root  : {OUTPUT_ROOT}")
+print(f"ExDark root  : {EXDARK_ROOT}")
+print(f"Prepared dir : {PREPARED_DIR}")
+print(f"Scenario dir : {SCENARIO_DIR}")
+assert os.path.exists(EXDARK_ROOT), f"ExDark not found: {EXDARK_ROOT}"
+print("\n✓ ExDark dataset found")
+save_environment_info(SCENARIO_DIR)
+'''
+
+FASE1_CODE = r'''#@title Fase 1 · Data Preparation  (auto-skip if already done)
+from src.data.split_dataset     import parse_split_file
+from src.data.convert_exdark    import convert_exdark_to_yolo
+from src.data.build_yolo_dataset import build_yolo_dataset
+
+classlist_path = os.path.join(EXDARK_ROOT,
+    cfg["paths"]["exdark_structure"]["groundtruth"], "imageclasslist.txt")
+img_dir        = os.path.join(EXDARK_ROOT, cfg["paths"]["exdark_structure"]["images"])
+gt_dir         = os.path.join(EXDARK_ROOT, cfg["paths"]["exdark_structure"]["groundtruth"])
+split_output   = os.path.join(PREPARED_DIR, "splits")
+labels_dir     = os.path.join(PREPARED_DIR, "ExDark_yolo_labels")
+yolo_dir       = os.path.join(PREPARED_DIR, "ExDark_yolo")
+
+# 1.1 Splits
+splits = parse_split_file(classlist_path, split_output)
+print(f"Splits  -> Train:{splits['train']} Val:{splits['val']} Test:{splits['test']}")
+
+# 1.2 Convert annotations
+stats = convert_exdark_to_yolo(img_dir, gt_dir, labels_dir)
+print(f"Labels  -> {stats['total_labels']} files, {stats['total_objects']} objects")
+
+# 1.3 Build YOLO dir + dataset.yaml
+build_stats = build_yolo_dataset(img_dir, labels_dir, split_output, yolo_dir,
+                                  target_size=cfg["yolo"]["imgsz"])
+total = sum(s["processed"] for s in build_stats["splits"].values())
+print(f"YOLO dir-> {total} images built  ({yolo_dir})")
+'''
+
+FASE2_SKIP_CODE = r'''#@title Fase 2 · Enhancement  (S1_Raw — SKIPPED, no enhancement)
+print("[SKIP] S1_Raw uses raw images. No LLIE enhancement needed.")
+enhancer_name = None
+enhanced_dir  = None
+'''
+
+FASE2_ENH_CODE = r'''#@title Fase 2 · Enhancement  (auto-skip if already done)
+import torch
+from src.enhancement.run_enhancement import enhance_dataset, get_enhancer
+
+enhancer_name = cfg.get("enhancer", {}).get("name", None)
+assert enhancer_name and enhancer_name.lower() != "none", \
+    "No enhancer configured for this scenario!"
+
+enhanced_dir = os.path.join(SCENARIO_DIR, "enhanced")
+cache_dir    = os.path.join(OUTPUT_ROOT, "model_cache")
+
+print(f"Enhancer  : {enhancer_name}")
+print(f"Output    : {enhanced_dir}")
+
+enhancer = get_enhancer(enhancer_name, cache_dir)
+enhancer.load_model()
+
+stats = enhance_dataset(
+    enhancer=enhancer,
+    source_dataset_dir=yolo_dir,
+    output_dir=enhanced_dir,
+    yolo_labels_dir=yolo_dir,
+)
+
+print(f"\nDone -> {stats['total_processed']} processed, "
+      f"{stats['total_skipped']} skipped, {stats['total_failed']} failed")
+
+del enhancer
+if torch.cuda.is_available(): torch.cuda.empty_cache()
+'''
+
+PREVIEW_NO_ENH = r'''#@title Fase 2.5 · Sample Test Images (3x3 Grid)
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import glob as _glob
+
+test_img_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+sample_images = sorted(_glob.glob(os.path.join(test_img_dir, "*.*")))[:9]
+
+fig, axes = plt.subplots(3, 3, figsize=(14, 14))
+fig.suptitle(f"Sample Test Images — {SCENARIO_NAME}\n(No Enhancement — Raw Low-Light)",
+             fontsize=16, fontweight='bold', y=1.02)
+
+for idx, ax in enumerate(axes.flat):
+    if idx < len(sample_images):
+        img = mpimg.imread(sample_images[idx])
+        ax.imshow(img)
+        ax.set_title(os.path.basename(sample_images[idx]), fontsize=9)
+    ax.axis('off')
+
+plt.tight_layout()
+os.makedirs(SCENARIO_EVAL, exist_ok=True)
+plt.savefig(os.path.join(SCENARIO_EVAL, "sample_test_images.png"),
+            dpi=150, bbox_inches='tight')
+plt.show()
+print(f"Saved -> {SCENARIO_EVAL}/sample_test_images.png")
+'''
+
+PREVIEW_ENH = r'''#@title Fase 2.5 · Original vs Enhanced (3x3 Paired Grid)
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import glob as _glob
+
+raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+enh_test_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test")
+
+raw_images = sorted(_glob.glob(os.path.join(raw_test_dir, "*.*")))[:9]
+
+fig, axes = plt.subplots(6, 3, figsize=(15, 28))
+fig.suptitle(f"Original (Low-Light) vs Enhanced ({enhancer_name}) — {SCENARIO_NAME}",
+             fontsize=16, fontweight='bold', y=1.01)
+
+for i in range(9):
+    row_orig = (i // 3) * 2
+    row_enh  = row_orig + 1
+    col      = i % 3
+
+    if i < len(raw_images):
+        fname = os.path.basename(raw_images[i])
+
+        raw_img = mpimg.imread(raw_images[i])
+        axes[row_orig, col].imshow(raw_img)
+        axes[row_orig, col].set_title(f"Original: {fname}", fontsize=8)
+        axes[row_orig, col].axis('off')
+
+        enh_path = os.path.join(enh_test_dir, fname)
+        if os.path.exists(enh_path):
+            enh_img = mpimg.imread(enh_path)
+            axes[row_enh, col].imshow(enh_img)
+            axes[row_enh, col].set_title(f"Enhanced: {fname}", fontsize=8)
+        else:
+            axes[row_enh, col].text(0.5, 0.5, "Enhanced not found",
+                                     ha='center', va='center',
+                                     transform=axes[row_enh, col].transAxes, fontsize=10)
+        axes[row_enh, col].axis('off')
+    else:
+        axes[row_orig, col].axis('off')
+        axes[row_enh, col].axis('off')
+
+plt.tight_layout()
+os.makedirs(SCENARIO_EVAL, exist_ok=True)
+plt.savefig(os.path.join(SCENARIO_EVAL, "sample_original_vs_enhanced.png"),
+            dpi=150, bbox_inches='tight')
+plt.show()
+print(f"Saved -> {SCENARIO_EVAL}/sample_original_vs_enhanced.png")
+'''
+
+FASE3_CODE = r'''#@title Fase 3 · Training
+# Set FORCE_RETRAIN = True to retrain even if best.pt already exists.
+# (This will DELETE the previous run folder and retrain from scratch.)
+FORCE_RETRAIN = False  # @param {type:"boolean"}
+
+from src.training.train_yolo import train_yolo, get_best_weights
+import shutil
+
+data_yaml = (
+    os.path.join(SCENARIO_DIR, "enhanced", "dataset.yaml")
+    if enhancer_name and enhancer_name.lower() != "none"
+    else os.path.join(PREPARED_DIR, "ExDark_yolo", "dataset.yaml")
+)
+assert os.path.exists(data_yaml), f"dataset.yaml not found: {data_yaml}"
+
+if FORCE_RETRAIN and os.path.exists(SCENARIO_RUNS):
+    print(f"FORCE_RETRAIN=True -- removing previous run: {SCENARIO_RUNS}")
+    shutil.rmtree(SCENARIO_RUNS)
+    os.makedirs(SCENARIO_RUNS, exist_ok=True)
+
+result = train_yolo(dataset_yaml=data_yaml, scenario_name=SCENARIO_NAME,
+                    output_dir=SCENARIO_RUNS, config=cfg, force=FORCE_RETRAIN)
+
+best = get_best_weights(os.path.join(SCENARIO_RUNS, SCENARIO_NAME))
+print(f"\nbest.pt  : {best}")
+'''
+
+TRAIN_CURVES_CODE = r'''#@title Fase 3.5 · Training Curves
+import pandas as pd
+import matplotlib.pyplot as plt
+import glob as _glob
+
+run_dir_train = os.path.join(SCENARIO_RUNS, SCENARIO_NAME)
+results_csv = os.path.join(run_dir_train, "results.csv")
+if not os.path.exists(results_csv):
+    candidates = _glob.glob(os.path.join(run_dir_train, "**", "results.csv"), recursive=True)
+    if candidates:
+        results_csv = candidates[0]
+
+if not os.path.exists(results_csv):
+    print(f"results.csv not found in {run_dir_train}. Skipping training curves.")
+else:
+    df = pd.read_csv(results_csv)
+    df.columns = df.columns.str.strip()
+    epochs = df.index + 1
+
+    # ── Figure 1: Train vs Val Loss + Metrics ──
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig.suptitle(f"Training Curves — {SCENARIO_NAME}", fontsize=16, fontweight='bold')
+
+    # Row 1: Loss (train vs val -> detect overfitting)
+    loss_pairs = [
+        ("train/box_loss", "val/box_loss", "Box Loss"),
+        ("train/cls_loss", "val/cls_loss", "Classification Loss"),
+        ("train/dfl_loss", "val/dfl_loss", "DFL Loss"),
+    ]
+    for i, (tr, vl, title) in enumerate(loss_pairs):
+        if tr in df.columns and vl in df.columns:
+            axes[0, i].plot(epochs, df[tr], label="Train", linewidth=2, color='#2196F3')
+            axes[0, i].plot(epochs, df[vl], label="Val", linewidth=2,
+                            linestyle='--', color='#F44336')
+            axes[0, i].set_title(title, fontsize=12, fontweight='bold')
+            axes[0, i].set_xlabel("Epoch")
+            axes[0, i].set_ylabel("Loss")
+            axes[0, i].legend(fontsize=10)
+            axes[0, i].grid(True, alpha=0.3)
+
+    # Row 2: Metrics progression
+    metric_items = [
+        ("metrics/precision(B)", "Precision", '#4CAF50'),
+        ("metrics/recall(B)",    "Recall",    '#FF9800'),
+        ("metrics/mAP50(B)",     "mAP@0.5",   '#9C27B0'),
+    ]
+    for i, (col, title, color) in enumerate(metric_items):
+        if col in df.columns:
+            axes[1, i].plot(epochs, df[col], linewidth=2, color=color)
+            axes[1, i].set_title(title, fontsize=12, fontweight='bold')
+            axes[1, i].set_xlabel("Epoch")
+            axes[1, i].set_ylabel(title)
+            axes[1, i].grid(True, alpha=0.3)
+            axes[1, i].set_ylim(0, 1.05)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(SCENARIO_EVAL, "training_curves.png"),
+                dpi=150, bbox_inches='tight')
+    plt.show()
+
+    # ── Figure 2: mAP@0.5 vs mAP@0.5:0.95 ──
+    if "metrics/mAP50(B)" in df.columns and "metrics/mAP50-95(B)" in df.columns:
+        fig2, ax2 = plt.subplots(figsize=(10, 5))
+        ax2.plot(epochs, df["metrics/mAP50(B)"],
+                 label="mAP@0.5", linewidth=2, color='#9C27B0')
+        ax2.plot(epochs, df["metrics/mAP50-95(B)"],
+                 label="mAP@0.5:0.95", linewidth=2, color='#E91E63')
+        ax2.set_title(f"mAP Progression — {SCENARIO_NAME}",
+                      fontsize=14, fontweight='bold')
+        ax2.set_xlabel("Epoch")
+        ax2.set_ylabel("mAP")
+        ax2.legend(fontsize=11)
+        ax2.grid(True, alpha=0.3)
+        ax2.set_ylim(0, 1.05)
+        plt.tight_layout()
+        plt.savefig(os.path.join(SCENARIO_EVAL, "mAP_progression.png"),
+                    dpi=150, bbox_inches='tight')
+        plt.show()
+
+    # ── Figure 3: Learning Rate Schedule ──
+    lr_cols = [c for c in df.columns if c.startswith("lr/")]
+    if lr_cols:
+        fig3, ax3 = plt.subplots(figsize=(10, 4))
+        for c in lr_cols:
+            ax3.plot(epochs, df[c], label=c, linewidth=1.5)
+        ax3.set_title(f"Learning Rate Schedule — {SCENARIO_NAME}",
+                      fontsize=14, fontweight='bold')
+        ax3.set_xlabel("Epoch")
+        ax3.set_ylabel("Learning Rate")
+        ax3.legend(fontsize=9)
+        ax3.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(os.path.join(SCENARIO_EVAL, "lr_schedule.png"),
+                    dpi=150, bbox_inches='tight')
+        plt.show()
+
+    print(f"Saved training curves -> {SCENARIO_EVAL}/")
+'''
+
+FASE4_CODE = r'''#@title Fase 4 · Detection Evaluation
+# Set FORCE_EVALUATION = True to re-evaluate even if metrics.json exists.
+FORCE_EVALUATION = False  # @param {type:"boolean"}
+
+from src.evaluation.eval_yolo import evaluate_yolo
+import pandas as pd
+
+weights_path = get_best_weights(os.path.join(SCENARIO_RUNS, SCENARIO_NAME))
+
+results  = evaluate_yolo(weights_path=weights_path, dataset_yaml=data_yaml,
+                         output_dir=SCENARIO_EVAL, scenario_name=SCENARIO_NAME,
+                         force=FORCE_EVALUATION)
+overall  = results.get("overall", {})
+
+print(f"\n{'='*50}")
+print(f"Detection Results — {SCENARIO_NAME}")
+print(f"{'='*50}")
+print(f"  mAP@0.5      : {overall.get('mAP_50',0):.4f}")
+print(f"  mAP@0.5:0.95 : {overall.get('mAP_50_95',0):.4f}")
+print(f"  Precision    : {overall.get('precision',0):.4f}")
+print(f"  Recall       : {overall.get('recall',0):.4f}")
+
+# ── Per-class table (defensive: handles both dict and float values) ──
+per_cls = results.get("per_class", {})
+if per_cls:
+    def _extract(v, key, default=0):
+        if isinstance(v, dict):
+            return v.get(key, default)
+        return float(v) if key == "mAP_50" else default
+
+    cls_rows = [{
+        "Class": k,
+        "AP@0.5": f"{_extract(v, 'mAP_50'):.4f}",
+        "AP@0.5:0.95": f"{_extract(v, 'mAP_50_95'):.4f}",
+    } for k, v in per_cls.items()]
+
+    df_cls = pd.DataFrame(cls_rows).set_index("Class")
+    display(df_cls)
+'''
+
+DET_VIZ_CODE = r'''#@title Fase 4.5 · Detection Visualization (GT vs Prediction)
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.image as mpimg
+from ultralytics import YOLO
+import numpy as np
+import glob as _glob
+import torch
+
+CLASS_NAMES = {
+    0: "Bicycle", 1: "Boat", 2: "Bottle", 3: "Bus",
+    4: "Car", 5: "Cat", 6: "Chair", 7: "Cup",
+    8: "Dog", 9: "Motorbike", 10: "People", 11: "Table",
+}
+BOX_COLORS = {i: plt.cm.tab20(i / 12) for i in range(12)}
+
+# ── Paths ──
+if enhancer_name and str(enhancer_name).lower() != "none":
+    test_img_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test")
+else:
+    test_img_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+test_lbl_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "labels", "test")
+
+_w = get_best_weights(os.path.join(SCENARIO_RUNS, SCENARIO_NAME))
+_model = YOLO(_w)
+
+sample_imgs = sorted(_glob.glob(os.path.join(test_img_dir, "*.*")))[:9]
+
+def _draw_boxes(ax, boxes_data, mode="gt"):
+    for b in boxes_data:
+        cid = b["cid"]
+        color = BOX_COLORS.get(cid, (1, 0, 0, 1))
+        rect = plt.Rectangle(
+            (b["x1"], b["y1"]), b["w"], b["h"],
+            linewidth=2, edgecolor=color, facecolor="none")
+        ax.add_patch(rect)
+        label = CLASS_NAMES.get(cid, str(cid))
+        if mode == "pred":
+            label = f"{label} {b['conf']:.2f}"
+        ax.text(b["x1"], max(b["y1"] - 3, 0), label,
+                fontsize=7, color="white",
+                bbox=dict(boxstyle="round,pad=0.15",
+                          facecolor=color, alpha=0.85))
+
+def _parse_gt(label_path, h, w):
+    boxes = []
+    if not os.path.exists(label_path): return boxes
+    with open(label_path) as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) < 5: continue
+            cid = int(parts[0])
+            xc, yc, bw, bh = (float(x) for x in parts[1:5])
+            boxes.append({"cid": cid,
+                          "x1": (xc - bw/2)*w, "y1": (yc - bh/2)*h,
+                          "w": bw*w, "h": bh*h})
+    return boxes
+
+def _parse_pred(results):
+    boxes = []
+    for box in results[0].boxes:
+        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        boxes.append({"cid": int(box.cls[0]),
+                      "x1": x1, "y1": y1,
+                      "w": x2 - x1, "h": y2 - y1,
+                      "conf": float(box.conf[0])})
+    return boxes
+
+# ── Plot: 9 rows x 2 cols (GT left, Pred right) ──
+n = len(sample_imgs)
+fig, axes = plt.subplots(n, 2, figsize=(16, 4.5 * n),
+                         gridspec_kw={"wspace": 0.03, "hspace": 0.12})
+fig.suptitle(
+    f"Detection Results — {SCENARIO_NAME}\n"
+    "Left: Ground Truth  |  Right: Prediction (conf >= 0.25)",
+    fontsize=16, fontweight="bold", y=1.0)
+
+if n == 1: axes = axes.reshape(1, 2)
+
+for idx, img_path in enumerate(sample_imgs):
+    fname = os.path.basename(img_path)
+    img = mpimg.imread(img_path)
+    h, w = img.shape[:2]
+
+    axes[idx, 0].imshow(img, aspect="equal")
+    lbl = os.path.join(test_lbl_dir, os.path.splitext(fname)[0] + ".txt")
+    _draw_boxes(axes[idx, 0], _parse_gt(lbl, h, w), mode="gt")
+    axes[idx, 0].set_title(f"GT: {fname}", fontsize=9, loc="left")
+    axes[idx, 0].axis("off")
+
+    axes[idx, 1].imshow(img, aspect="equal")
+    pred = _model.predict(img_path, conf=0.25, verbose=False)
+    _draw_boxes(axes[idx, 1], _parse_pred(pred), mode="pred")
+    axes[idx, 1].set_title(f"Pred: {fname}", fontsize=9, loc="left")
+    axes[idx, 1].axis("off")
+
+plt.tight_layout()
+save_path = os.path.join(SCENARIO_EVAL, "detection_samples_gt_vs_pred.png")
+plt.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.show()
+print(f"Saved -> {SCENARIO_EVAL}/detection_samples_gt_vs_pred.png")
+
+del _model
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+'''
+
+CM_CODE = r'''#@title Fase 4.6 · Confusion Matrix
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from ultralytics import YOLO
+import torch
+
+CLASS_NAMES_LIST = ["Bicycle", "Boat", "Bottle", "Bus", "Car", "Cat",
+                    "Chair", "Cup", "Dog", "Motorbike", "People", "Table"]
+nc = len(CLASS_NAMES_LIST)
+
+_w = get_best_weights(os.path.join(SCENARIO_RUNS, SCENARIO_NAME))
+_model = YOLO(_w)
+
+val_results = _model.val(data=data_yaml, split="test", plots=False,
+                         conf=0.25, verbose=False)
+
+try:
+    cm_full = val_results.confusion_matrix.matrix
+except AttributeError:
+    print("Confusion matrix not available from val(). Skipping.")
+    cm_full = None
+
+if cm_full is not None:
+    cm = cm_full[:nc, :nc].copy()
+    row_sums = cm.sum(axis=1, keepdims=True)
+    cm_norm = np.where(row_sums > 0, cm / row_sums, 0)
+
+    fig, axes = plt.subplots(1, 2, figsize=(22, 9))
+
+    sns.heatmap(cm, annot=True, fmt='.0f', cmap='Blues',
+                xticklabels=CLASS_NAMES_LIST,
+                yticklabels=CLASS_NAMES_LIST,
+                ax=axes[0], linewidths=0.5)
+    axes[0].set_title(f"Confusion Matrix (Counts) — {SCENARIO_NAME}",
+                      fontsize=13, fontweight='bold')
+    axes[0].set_ylabel("True Class")
+    axes[0].set_xlabel("Predicted Class")
+    axes[0].tick_params(axis='x', rotation=45)
+    axes[0].tick_params(axis='y', rotation=0)
+
+    sns.heatmap(cm_norm, annot=True, fmt='.2f', cmap='Blues',
+                xticklabels=CLASS_NAMES_LIST,
+                yticklabels=CLASS_NAMES_LIST,
+                ax=axes[1], linewidths=0.5, vmin=0, vmax=1)
+    axes[1].set_title(f"Confusion Matrix (Normalized) — {SCENARIO_NAME}",
+                      fontsize=13, fontweight='bold')
+    axes[1].set_ylabel("True Class")
+    axes[1].set_xlabel("Predicted Class")
+    axes[1].tick_params(axis='x', rotation=45)
+    axes[1].tick_params(axis='y', rotation=0)
+
+    plt.tight_layout()
+    save_path = os.path.join(SCENARIO_EVAL, "confusion_matrix.png")
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.show()
+    print(f"Saved -> {SCENARIO_EVAL}/confusion_matrix.png")
+
+del _model
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+'''
+
+FASE5_CODE = r'''#@title Fase 5 · Image Quality Metrics  (auto-skip if summary.json exists)
+from src.evaluation.nr_metrics import compute_nr_metrics
+
+raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+test_dir = (
+    os.path.join(SCENARIO_DIR, "enhanced", "images", "test")
+    if enhancer_name and enhancer_name.lower() != "none"
+    else raw_test_dir
+)
+raw_dir_for_loe = raw_test_dir if (enhancer_name and enhancer_name.lower() != "none") else None
+
+nr = compute_nr_metrics(images_dir=test_dir, output_dir=SCENARIO_EVAL,
+                         scenario_name=SCENARIO_NAME, raw_images_dir=raw_dir_for_loe,
+                         force=FORCE_EVALUATION)
+print(f"\nNR-IQA — {SCENARIO_NAME}")
+print(f"  NIQE (lower=better)    : {nr.get('niqe_mean','N/A')}")
+print(f"  BRISQUE (lower=better) : {nr.get('brisque_mean','N/A')}")
+print(f"  LOE (lower=better)     : {nr.get('loe_mean','N/A')}")
+'''
+
+FASE6_CODE = r'''#@title Fase 6 · Latency & FLOPs  (auto-skip if cached)
+import torch
+from src.evaluation.latency import measure_latency
+from src.evaluation.flops   import compute_all_flops
+
+raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+weights_path = get_best_weights(os.path.join(SCENARIO_RUNS, SCENARIO_NAME))
+
+enhancer_obj = None
+if enhancer_name and enhancer_name.lower() != "none":
+    from src.enhancement.run_enhancement import get_enhancer
+    cache_dir    = os.path.join(OUTPUT_ROOT, "model_cache")
+    enhancer_obj = get_enhancer(enhancer_name, cache_dir)
+    enhancer_obj.load_model()
+
+lat  = measure_latency(yolo_weights=weights_path, output_dir=SCENARIO_EVAL,
+                        scenario_name=SCENARIO_NAME, test_images_dir=raw_test_dir,
+                        enhancer=enhancer_obj,
+                        num_images=cfg.get("latency",{}).get("iterations",200),
+                        warmup=cfg.get("latency",{}).get("warmup",50),
+                        force=FORCE_EVALUATION)
+
+flops = compute_all_flops(yolo_weights=weights_path, output_dir=SCENARIO_EVAL,
+                           scenario_name=SCENARIO_NAME,
+                           enhancer_model=enhancer_obj.model if enhancer_obj else None,
+                           enhancer_name=enhancer_name if enhancer_obj else None,
+                           force=FORCE_EVALUATION)
+
+print(f"\nLatency — {SCENARIO_NAME}")
+print(f"  T_enhance : {lat.get('T_enhance_ms_mean',0):.2f} ms")
+print(f"  T_detect  : {lat.get('T_detect_ms_mean',0):.2f} ms")
+print(f"  T_total   : {lat.get('T_total_ms_mean',0):.2f} ms")
+print(f"\nFLOPs — {SCENARIO_NAME}")
+print(f"  Enhancer  : {flops.get('enhancer',{}).get('gflops',0) or 0:.2f} GFLOPs")
+print(f"  YOLO      : {flops.get('yolo',{}).get('gflops',0) or 0:.2f} GFLOPs")
+print(f"  Total     : {flops.get('total_gflops',0) or 0:.2f} GFLOPs")
+
+if enhancer_obj: del enhancer_obj
+if torch.cuda.is_available(): torch.cuda.empty_cache()
+'''
+
+# Markdown cells
+PREVIEW_MD_NO_ENH = ["---\n", "## Fase 2.5: Sample Test Images Preview"]
+PREVIEW_MD_ENH = ["---\n", "## Fase 2.5: Sample Test Images — Original vs Enhanced"]
+TRAIN_CURVES_MD = [
+    "---\n",
+    "## Fase 3.5: Training Curves (Loss & Metrics)\n",
+    "Visualisasi kurva training untuk analisis **overfitting / underfitting**.\n",
+    "- **Row 1**: Train vs Val loss (box, cls, dfl) — gap besar = overfitting\n",
+    "- **Row 2**: Precision, Recall, mAP progression per epoch"
+]
+DET_VIZ_MD = [
+    "---\n",
+    "## Fase 4.5: Detection Samples — Predictions vs Ground Truth\n",
+    "Visualisasi 9 sample test images:\n",
+    "- **Kolom kiri**: Ground truth bounding boxes\n",
+    "- **Kolom kanan**: Prediksi model (bounding box + class label + confidence score)"
+]
+CM_MD = [
+    "---\n",
+    "## Fase 4.6: Confusion Matrix\n",
+    "Per-class confusion matrix untuk evaluasi kesalahan klasifikasi objek."
+]
+
+
+def mk_md(source):
+    return {"cell_type": "markdown", "metadata": {}, "source": source}
+
+def mk_code(text):
+    return {
+        "cell_type": "code",
+        "execution_count": None,
+        "metadata": {},
+        "outputs": [],
+        "source": _lines(text),
+    }
+
+
+def build_notebook(scenario_info):
+    """Build a complete notebook from scratch for a scenario."""
+    name = scenario_info["name"]
+    key = scenario_info["key"]
+    has_enh = scenario_info["has_enhancement"]
+
+    cells = []
+
+    # ── Header ──
+    enh_desc = "SKIPPED — baseline" if not has_enh else f"menggunakan {name.split('_',1)[-1] if '_' in name else name}"
+    cells.append(mk_md([
+        f"# Scenario Notebook: {name}\n",
+        "\n",
+        f"Pipeline Fase 1–6 untuk skenario **{name}**.\n",
+        "\n",
+        "| Fase | Deskripsi | Auto-skip? |\n",
+        "|------|-----------|------------|\n",
+        "| 1    | Data Preparation (parse, convert, build YOLO) | jika output sudah ada |\n",
+        f"| 2    | LLIE Enhancement ({enh_desc}) | jika enhanced dir sudah ada |\n",
+        "| 3    | YOLOv11n Training | jika best.pt sudah ada |\n",
+        "| 4    | Detection Evaluation (mAP, P, R) | jika metrics.json sudah ada |\n",
+        "| 5    | NR-IQA (NIQE, BRISQUE, LOE) | jika summary.json sudah ada |\n",
+        "| 6    | Latency & FLOPs | jika cache sudah ada |\n",
+        "\n",
+        "Setelah **semua 4 skenario** selesai buka **comparison.ipynb**.\n",
+    ]))
+
+    # ── 0. Setup ──
+    cells.append(mk_md(["## 0. Setup"]))
+
+    cells.append(mk_code(f'''#@title 0.1 · Mount Drive & Clone Repo
+from google.colab import drive
+drive.mount('/content/drive')
+
+import os, subprocess, sys
+
+# ── Config ──────────────────────────────────────────────────────
+QUICK_TEST  = True  # @param {{type:"boolean"}}
+REPO_URL    = "https://github.com/Otachiking/Object-Detection-ExDARK-with-LLIE.git"
+DRIVE_ROOT  = "/content/drive/MyDrive/KULIAH-S1INFORMATIKA/TA-IQBAL"
+
+SCENARIO_KEY  = "{key}"   # DO NOT CHANGE
+SCENARIO_NAME = "{name}"  # DO NOT CHANGE
+
+# ── Clone / pull ─────────────────────────────────────────────────
+REPO_DIR = "/content/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
+if os.path.isdir(os.path.join(REPO_DIR, ".git")):
+    print("Resetting repo to latest origin/main ...")
+    subprocess.run(["git","-C",REPO_DIR,"fetch","origin"], check=True)
+    subprocess.run(["git","-C",REPO_DIR,"reset","--hard","origin/main"], check=True)
+else:
+    import shutil
+    if os.path.exists(REPO_DIR): shutil.rmtree(REPO_DIR)
+    print("Cloning repo ...")
+    subprocess.run(["git","clone",REPO_URL,REPO_DIR], check=True)
+
+os.chdir(REPO_DIR)
+sys.path.insert(0, REPO_DIR)
+print(f"\\nScenario : {{SCENARIO_NAME}}")
+print(f"Quick test: {{QUICK_TEST}}")
+print(f"Drive root: {{DRIVE_ROOT}}")'''))
+
+    cells.append(mk_code(r'''#@title 0.2 · Install Dependencies
+!pip install -q ultralytics pyiqa thop fvcore scipy pandas pyyaml seaborn tqdm gdown huggingface_hub
+
+import torch
+print(f"PyTorch  : {torch.__version__}")
+print(f"CUDA     : {torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"GPU      : {torch.cuda.get_device_name(0)}")
+    props = torch.cuda.get_device_properties(0)
+    vram  = getattr(props, 'total_memory', None) or getattr(props, 'total_mem', 0)
+    print(f"VRAM     : {vram/1e9:.1f} GB")
+else:
+    print("No GPU — Runtime > Change runtime type > T4 GPU")'''))
+
+    cells.append(mk_code(SETUP_CONFIG_CODE))
+
+    # ── Fase 1 ──
+    cells.append(mk_md(["---\n", "## Fase 1: Data Preparation"]))
+    cells.append(mk_code(FASE1_CODE))
+
+    # ── Fase 2 ──
+    cells.append(mk_md(["---\n", "## Fase 2: Image Enhancement"]))
+    if has_enh:
+        cells.append(mk_code(FASE2_ENH_CODE))
+    else:
+        cells.append(mk_code(FASE2_SKIP_CODE))
+
+    # ── Fase 2.5 ──
+    if has_enh:
+        cells.append(mk_md(PREVIEW_MD_ENH))
+        cells.append(mk_code(PREVIEW_ENH))
+    else:
+        cells.append(mk_md(PREVIEW_MD_NO_ENH))
+        cells.append(mk_code(PREVIEW_NO_ENH))
+
+    # ── Fase 3 ──
+    cells.append(mk_md(["---\n", "## Fase 3: Training"]))
+    cells.append(mk_code(FASE3_CODE))
+
+    # ── Fase 3.5 ──
+    cells.append(mk_md(TRAIN_CURVES_MD))
+    cells.append(mk_code(TRAIN_CURVES_CODE))
+
+    # ── Fase 4 ──
+    cells.append(mk_md(["---\n", "## Fase 4: Detection Evaluation"]))
+    cells.append(mk_code(FASE4_CODE))
+
+    # ── Fase 4.5 ──
+    cells.append(mk_md(DET_VIZ_MD))
+    cells.append(mk_code(DET_VIZ_CODE))
+
+    # ── Fase 4.6 ──
+    cells.append(mk_md(CM_MD))
+    cells.append(mk_code(CM_CODE))
+
+    # ── Fase 5 ──
+    cells.append(mk_md(["---\n", "## Fase 5: Image Quality Metrics"]))
+    cells.append(mk_code(FASE5_CODE))
+
+    # ── Fase 6 ──
+    cells.append(mk_md(["---\n", "## Fase 6: Latency & FLOPs"]))
+    cells.append(mk_code(FASE6_CODE))
+
+    # ── Done ──
+    cells.append(mk_code(f'''#@title Done — {name} complete
+print("=" * 60)
+print(f"  {{SCENARIO_NAME}} — all Fase 1-6 complete")
+print(f"  Results saved under:")
+print(f"    {{SCENARIO_DIR}}/")
+print(f"    ├── runs/       (training weights)")
+print(f"    └── evaluation/ (metrics, figures)")
+print()
+print("  Next steps:")
+print("    -> Run the other scenario notebooks")
+print("    -> After all 4 scenarios done, open comparison.ipynb")
+print("=" * 60)'''))
+
+    return cells
+
+
+def main():
+    for filename, info in SCENARIOS.items():
+        nb_path = os.path.join(NOTEBOOKS_DIR, filename)
+
+        # Read existing notebook to preserve metadata
+        if os.path.exists(nb_path):
+            with open(nb_path, "r", encoding="utf-8") as f:
+                nb = json.load(f)
+        else:
+            nb = {
+                "nbformat": 4,
+                "nbformat_minor": 2,
+                "metadata": {
+                    "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+                    "language_info": {"name": "python", "version": "3.10.0"},
+                },
+                "cells": [],
+            }
+
+        # Build clean cells
+        nb["cells"] = build_notebook(info)
+
+        with open(nb_path, "w", encoding="utf-8") as f:
+            json.dump(nb, f, indent=1, ensure_ascii=False)
+        print(f"  -> Rebuilt {filename} ({len(nb['cells'])} cells)")
+
+    print("\nDone — all 4 notebooks rebuilt with new folder structure.")
+
+
+if __name__ == "__main__":
+    main()

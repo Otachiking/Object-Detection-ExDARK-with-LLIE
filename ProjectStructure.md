@@ -3,74 +3,71 @@
 ```
 TA-IQBAL/                             # Drive root: .../MyDrive/KULIAH-S1INFORMATIKA/TA-IQBAL
 ├── data/
-│   └── Exdark_original/
+│   └── Exdark_original/              # Dataset ExDark (upload manual)
 │       ├── Dataset/                  # Folder gambar low-light ExDark
-│       │   ├── Bicycle/              # Berisi file gambar (.png, .jpg, .JPEG, .bmp)
-│       │   ├── Boat/
-│       │   ├── Bottle/
-│       │   ├── Bus/
-│       │   ├── Car/
-│       │   ├── Cat/
-│       │   ├── Chair/
-│       │   ├── Cup/
-│       │   ├── Dog/
-│       │   ├── Motorbike/
-│       │   ├── People/
-│       │   └── Table/
+│       │   ├── Bicycle/
+│       │   ├── Boat/  ...  Table/
 │       ├── Groundtruth/              # Folder anotasi bounding-box ExDark
-│       │   ├── Bicycle/              # Berisi file anotasi (.txt)
-│       │   ├── Boat/
-│       │   ├── Bottle/
-│       │   ├── Bus/
-│       │   ├── Car/
-│       │   ├── Cat/
-│       │   ├── Chair/
-│       │   ├── Cup/
-│       │   ├── Dog/
-│       │   ├── ExDark_Annno/
-│       │   ├── Motorbike/
-│       │   ├── People/
-│       │   ├── Table/
-│       │   ├── imageclasslist.txt    # Daftar split resmi (train=1/val=2/test=3)
-│       │   ├── annotations.png
-│       │   ├── ExDark_Annno.zip
-│       │   ├── exdark1.png
-│       │   └── README.md
-│       ├── exdarkimg.gif
-│       ├── README.md
-│       └── Thumbnails.png
-│
-├── ExDark_yolo/                      # Output pipeline — dataset format YOLO
-│   ├── images/
-│   │   ├── train/
-│   │   ├── val/
-│   │   └── test/
-│   ├── labels/
-│   │   ├── train/
-│   │   ├── val/
-│   │   └── test/
-│   └── dataset.yaml                  # Konfigurasi dataset untuk Ultralytics
-│
-├── enhanced/                         # Output LLIE per skenario
-│   ├── S2_HVI_CIDNet/               # Gambar hasil enhancement HVI-CIDNet
-│   ├── S3_RetinexFormer/
-│   └── S4_LYT_Net/
+│       │   ├── Bicycle/  ...  Table/
+│       │   └── imageclasslist.txt    # Daftar split resmi (train=1/val=2/test=3)
+│       └── README.md
 │
 ├── model_cache/                      # Cache model LLIE (weights, repo clone)
+│   ├── hvi_cidnet/
+│   ├── retinexformer/
+│   └── lyt_net/
 │
-├── splits/                           # Metadata pembagian dataset
-│   ├── train.txt
-│   ├── val.txt
-│   ├── test.txt
-│   └── manifest.txt
+├── prepared/                         # Output Fase 1 — shared untuk semua skenario
+│   ├── ExDark_yolo/                  # Dataset format YOLO
+│   │   ├── images/{train,val,test}/
+│   │   ├── labels/{train,val,test}/
+│   │   └── dataset.yaml
+│   ├── ExDark_yolo_labels/           # Label intermediate (hasil konversi anotasi)
+│   └── splits/                       # Metadata pembagian dataset
+│       ├── train.txt
+│       ├── val.txt
+│       └── test.txt
 │
-├── runs/                             # Output training & evaluation YOLO per skenario
-│
-├── repo/                             # Clone GitHub repo (oleh Cell 0.1)
-│   └── Object-Detection-ExDARK-with-LLIE/
-│
-├── requirements_frozen.txt           # Daftar dependensi library Python
-└── system_info.json                  # Informasi sistem/lingkungan
+└── scenarios/                        # Output per skenario — terisolasi
+    ├── S1_Raw/
+    │   ├── runs/                     # Output training Ultralytics
+    │   │   └── S1_Raw/
+    │   │       ├── weights/best.pt
+    │   │       ├── weights/last.pt
+    │   │       └── results.csv
+    │   └── evaluation/               # Hasil evaluasi (semua flat di sini)
+    │       ├── metrics.json          # mAP, precision, recall (overall + per-class)
+    │       ├── metrics_per_class.csv
+    │       ├── flops.json            # GFLOPs model
+    │       ├── latency.json          # Latency inference (ms/image)
+    │       ├── summary.json          # NR-IQA: NIQE, BRISQUE, LOE
+    │       ├── training_curves.png   # Kurva loss & metrik
+    │       ├── mAP_progression.png   # mAP@0.5 & mAP@0.5:0.95 per epoch
+    │       ├── lr_schedule.png       # Learning rate schedule
+    │       ├── detection_samples_gt_vs_pred.png
+    │       ├── confusion_matrix.png
+    │       ├── sample_test_images.png
+    │       ├── config_snapshot.yaml
+    │       └── system_info.json
+    │
+    ├── S2_HVI_CIDNet/
+    │   ├── enhanced/                 # Gambar hasil enhancement HVI-CIDNet
+    │   │   ├── images/{train,val,test}/
+    │   │   ├── labels/{train,val,test}/  → symlink ke ExDark_yolo
+    │   │   └── dataset.yaml
+    │   ├── runs/                     # Output training
+    │   │   └── S2_HVI_CIDNet/weights/best.pt
+    │   └── evaluation/               # Hasil evaluasi (flat, sama struktur dengan S1)
+    │
+    ├── S3_RetinexFormer/             # Sama dengan S2
+    │   ├── enhanced/
+    │   ├── runs/
+    │   └── evaluation/
+    │
+    └── S4_LYT_Net/                   # Sama dengan S2
+        ├── enhanced/
+        ├── runs/
+        └── evaluation/
 ```
 
 ---
@@ -88,15 +85,24 @@ Object-Detection-ExDARK-with-LLIE/
 │   └── s4_lyt_net.yaml               # Skenario 4 — LYT-Net
 │
 ├── notebooks/
-│   └── master_pipeline.ipynb         # Notebook utama (dijalankan di Google Colab)
+│   ├── scenario_s1_raw.ipynb         # Notebook skenario S1 (Baseline Raw)
+│   ├── scenario_s2_hvi_cidnet.ipynb  # Notebook skenario S2 (HVI-CIDNet)
+│   ├── scenario_s3_retinexformer.ipynb
+│   ├── scenario_s4_lyt_net.ipynb
+│   ├── comparison.ipynb              # Cross-scenario comparison & visualisasi
+│   └── master_pipeline.ipynb         # (Legacy) Pipeline gabungan
 │
-├── scripts/                          # Entry-point CLI (dipanggil dari notebook)
-│   ├── prepare_data.py               # Fase 1: split, konversi, build, validasi
+├── scripts/                          # Entry-point CLI & patcher tools
+│   ├── prepare_data.py               # Fase 1: split, konversi, build
 │   ├── enhance_dataset.py            # Fase 2: enhancement LLIE
 │   ├── train.py                      # Fase 3: training YOLOv11n
 │   ├── evaluate.py                   # Fase 4: evaluasi mAP
 │   ├── measure_efficiency.py         # Fase 6: latency & FLOPs
-│   └── aggregate_results.py          # Fase 7: agregasi hasil
+│   ├── aggregate_results.py          # Fase 7: agregasi hasil
+│   ├── generate_notebooks.py         # Generator notebook dari template
+│   ├── patch_notebooks.py            # Patch v1: tambah visualisasi cells
+│   ├── patch_v2.py                   # Patch v2: fix layout, force retrain
+│   └── patch_v3_restructure.py       # Patch v3: restructure per-scenario
 │
 ├── src/                              # Library utama
 │   ├── __init__.py
@@ -108,7 +114,7 @@ Object-Detection-ExDARK-with-LLIE/
 │   │   ├── split_dataset.py          # Parse imageclasslist.txt → train/val/test
 │   │   ├── convert_exdark.py         # Konversi anotasi ExDark → YOLO format
 │   │   ├── build_yolo_dataset.py     # Salin gambar+label ke struktur YOLO
-│   │   └── validate_dataset.py       # Validasi integritas dataset YOLO
+│   │   └── validate_dataset.py       # (Unused) Validasi integritas dataset YOLO
 │   │
 │   ├── enhancement/                  # Orchestrator enhancement
 │   │   ├── __init__.py
@@ -124,7 +130,7 @@ Object-Detection-ExDARK-with-LLIE/
 │   ├── evaluation/                   # Evaluasi & metrik
 │   │   ├── __init__.py
 │   │   ├── eval_yolo.py              # Evaluasi mAP via Ultralytics val()
-│   │   ├── nr_metrics.py             # No-Reference IQA (NIQE, BRISQUE, dll.)
+│   │   ├── nr_metrics.py             # No-Reference IQA (NIQE, BRISQUE, LOE)
 │   │   ├── correlation.py            # Korelasi metrik IQA vs mAP
 │   │   ├── latency.py                # Pengukuran latency inference
 │   │   └── flops.py                  # Pengukuran FLOPs model

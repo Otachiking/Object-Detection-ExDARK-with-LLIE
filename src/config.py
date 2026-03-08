@@ -161,18 +161,16 @@ def load_config(
 def get_data_paths(config: dict) -> dict:
     """Extract resolved data paths from config.
 
-    Returns dict with keys: exdark_original, exdark_yolo, exdark_enhanced, splits, runs, results, cache
+    Returns dict with keys: exdark_original, output_root, model_cache
+    Scenario-specific paths (prepared/, scenarios/) are computed in notebooks
+    from output_root.
     """
     p = config.get("paths", {})
     data = p.get("data", {})
     return {
         "exdark_original": data.get("exdark_original", ""),
-        "exdark_yolo": data.get("exdark_yolo", ""),
-        "exdark_enhanced": data.get("exdark_enhanced", ""),
-        "splits": data.get("splits", ""),
-        "runs": p.get("runs", ""),
-        "results": p.get("results", ""),
-        "cache": p.get("cache", ""),
+        "output_root": p.get("output_root", ""),
+        "model_cache": p.get("model_cache", ""),
     }
 
 
