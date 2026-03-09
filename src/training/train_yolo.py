@@ -26,6 +26,7 @@ def train_yolo(
     scenario_name: str,
     output_dir: str,
     config: dict,
+    run_name: str = None,
     resume: bool = False,
     force: bool = False,
 ) -> dict:
@@ -35,9 +36,11 @@ def train_yolo(
 
     Args:
         dataset_yaml: Path to dataset.yaml (Ultralytics format)
-        scenario_name: Scenario identifier (e.g., "s1_raw")
-        output_dir: Root output directory for runs
+        scenario_name: Scenario identifier (e.g., "S1_Raw") — used for logging
+        output_dir: Root output directory (Ultralytics 'project' dir)
         config: Merged configuration dict (base + scenario)
+        run_name: Ultralytics 'name' dir inside output_dir.
+                  Defaults to scenario_name if None.
         resume: Resume from last.pt if available
         force: If True, retrain even if best.pt exists
 
@@ -46,9 +49,10 @@ def train_yolo(
     """
     yolo_cfg = config.get("yolo", {})
     seed = config.get("seed", 42)
+    _run_name = run_name if run_name else scenario_name
 
     # --- Skip logic: check if training already completed ---
-    run_dir = os.path.join(output_dir, scenario_name)
+    run_dir = os.path.join(output_dir, _run_name)
     best_pt = os.path.join(run_dir, "weights", "best.pt")
     last_pt = os.path.join(run_dir, "weights", "last.pt")
 
@@ -79,12 +83,12 @@ def train_yolo(
 
     # Project and name for Ultralytics directory structure
     project_dir = output_dir
-    run_name = scenario_name
+    run_name_dir = _run_name
 
     print(f"\n{'='*60}")
     print(f"[TRAIN] Scenario: {scenario_name}")
     print(f"[TRAIN] Dataset: {dataset_yaml}")
-    print(f"[TRAIN] Output: {project_dir}/{run_name}")
+    print(f"[TRAIN] Output: {project_dir}/{run_name_dir}")
     print(f"[TRAIN] Epochs: {epochs}, Batch: {batch}, Seed: {seed}")
     print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolo11n.pt')}")
     print(f"{'='*60}\n")
@@ -105,7 +109,7 @@ def train_yolo(
         seed=seed,
         patience=yolo_cfg.get("patience", 20),
         project=project_dir,
-        name=run_name,
+        name=run_name_dir,
         exist_ok=yolo_cfg.get("exist_ok", True),
         device=0 if torch.cuda.is_available() else "cpu",
         workers=yolo_cfg.get("workers", 2),
@@ -129,7 +133,7 @@ def train_yolo(
     )
 
     # Save config snapshot and environment info
-    run_dir = os.path.join(project_dir, run_name)
+    run_dir = os.path.join(project_dir, run_name_dir)
     save_config_snapshot(config, run_dir)
     save_environment_info(run_dir)
 

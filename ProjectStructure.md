@@ -4,16 +4,20 @@
 TA-IQBAL/                             # Drive root: .../MyDrive/KULIAH-S1INFORMATIKA/TA-IQBAL
 ├── data/
 │   └── Exdark_original/              # Dataset ExDark (upload manual)
-│       ├── Dataset/                  # Folder gambar low-light ExDark
-│       │   ├── Bicycle/
-│       │   ├── Boat/  ...  Table/
-│       ├── Groundtruth/              # Folder anotasi bounding-box ExDark
-│       │   ├── Bicycle/  ...  Table/
-│       │   └── imageclasslist.txt    # Daftar split resmi (train=1/val=2/test=3)
-│       └── README.md
+│   │   ├── Dataset/                  # Folder gambar low-light ExDark
+│   │   │   ├── Bicycle/
+│   │   │   ├── Boat/  ...  Table/
+│   │   ├── Groundtruth/              # Folder anotasi bounding-box ExDark
+│   │   │   ├── Bicycle/  ...  Table/
+│   │   │   └── imageclasslist.txt    # Daftar split resmi (train=1/val=2/test=3)
+│   │   └── README.md
+│   │
+│   └── Exdark_hvi_cidnet/ 
+
+ExDark_hvi_cidnet
 │
 ├── model_cache/                      # Cache model LLIE (weights, repo clone)
-│   ├── hvi_cidnet/
+│   ├── HVI_CIDNet/
 │   ├── retinexformer/
 │   └── lyt_net/
 │
@@ -30,24 +34,32 @@ TA-IQBAL/                             # Drive root: .../MyDrive/KULIAH-S1INFORMA
 │
 └── scenarios/                        # Output per skenario — terisolasi
     ├── S1_Raw/
-    │   ├── runs/                     # Output training Ultralytics
-    │   │   └── S1_Raw/
-    │   │       ├── weights/best.pt
-    │   │       ├── weights/last.pt
-    │   │       └── results.csv
+    │   ├── runs/                     # Output training Ultralytics (FLAT, no subfolder)
+    │   │   ├── weights/best.pt
+    │   │   ├── weights/last.pt
+    │   │   ├── results.csv            # Per-epoch metrics table
+    │   │   ├── results.png           # Ultralytics training summary chart
+    │   │   ├── confusion_matrix.png  # CM from training run
+    │   │   ├── confusion_matrix_normalized.png
+    │   │   ├── train_batch{0,1,2}.jpg           # Augmented training samples
+    │   │   ├── val_batch{0,1,2}_pred.jpg        # Val predictions
+    │   │   ├── val_batch{0,1,2}_labels.jpg      # Val ground truth
+    │   │   ├── config_snapshot.yaml
+    │   │   └── system_info.json
     │   └── evaluation/               # Hasil evaluasi (semua flat di sini)
     │       ├── metrics.json          # mAP, precision, recall (overall + per-class)
     │       ├── metrics_per_class.csv
     │       ├── flops.json            # GFLOPs model
     │       ├── latency.json          # Latency inference (ms/image)
     │       ├── summary.json          # NR-IQA: NIQE, BRISQUE, LOE
-    │       ├── training_curves.png   # Kurva loss & metrik
+    │       ├── training_curves.png   # Custom kurva loss & metrik
     │       ├── mAP_progression.png   # mAP@0.5 & mAP@0.5:0.95 per epoch
     │       ├── lr_schedule.png       # Learning rate schedule
     │       ├── detection_samples_gt_vs_pred.png
-    │       ├── confusion_matrix.png
+    │       ├── val_batch_pred_vs_labels.png     # 3x2 grid pred vs labels
+    │       ├── confusion_matrix.png  # Copied from runs/
+    │       ├── confusion_matrix_normalized.png
     │       ├── sample_test_images.png
-    │       ├── config_snapshot.yaml
     │       └── system_info.json
     │
     ├── S2_HVI_CIDNet/
@@ -55,8 +67,9 @@ TA-IQBAL/                             # Drive root: .../MyDrive/KULIAH-S1INFORMA
     │   │   ├── images/{train,val,test}/
     │   │   ├── labels/{train,val,test}/  → symlink ke ExDark_yolo
     │   │   └── dataset.yaml
-    │   ├── runs/                     # Output training
-    │   │   └── S2_HVI_CIDNet/weights/best.pt
+    │   ├── runs/                     # Output training (flat, sama dengan S1)
+    │   │   ├── weights/best.pt
+    │   │   └── ... (same structure as S1/runs)
     │   └── evaluation/               # Hasil evaluasi (flat, sama struktur dengan S1)
     │
     ├── S3_RetinexFormer/             # Sama dengan S2
@@ -102,7 +115,8 @@ Object-Detection-ExDARK-with-LLIE/
 │   ├── generate_notebooks.py         # Generator notebook dari template
 │   ├── patch_notebooks.py            # Patch v1: tambah visualisasi cells
 │   ├── patch_v2.py                   # Patch v2: fix layout, force retrain
-│   └── patch_v3_restructure.py       # Patch v3: restructure per-scenario
+│   ├── patch_v3_restructure.py       # Patch v3: restructure per-scenario
+│   └── patch_v4_final.py             # Patch v4: flat runs, Ultralytics figures, val batch grid
 │
 ├── src/                              # Library utama
 │   ├── __init__.py
