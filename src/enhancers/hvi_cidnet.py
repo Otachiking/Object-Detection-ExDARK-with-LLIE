@@ -1,9 +1,9 @@
 """
 HVI-CIDNet enhancer wrapper.
 
-Uses the "Generalization" pretrained weights (cross-dataset, random gamma augment).
+Uses the LOL-v1 pretrained weights (with perceptual loss).
 Repo: https://github.com/Fediory/HVI-CIDNet
-Weights: https://huggingface.co/Fediory/HVI-CIDNet-Generalization
+Weights: https://huggingface.co/Fediory/HVI-CIDNet-LOLv1-wperc
 
 Model is fully convolutional — works at any resolution.
 """
@@ -42,9 +42,9 @@ class HVICIDNetEnhancer(BaseEnhancer):
         print("[HVI-CIDNet] Repository cloned successfully")
 
     def _download_weights(self) -> str:
-        """Download Generalization weights from HuggingFace.
+        """Download LOL-v1 (with perceptual loss) weights from HuggingFace.
 
-        The HF repo Fediory/HVI-CIDNet-Generalization contains:
+        The HF repo Fediory/HVI-CIDNet-LOLv1-wperc contains:
           - pytorch_model.bin  (state_dict)
           - model.safetensors  (safetensors format)
         We prefer pytorch_model.bin for widest compatibility.
@@ -57,12 +57,12 @@ class HVICIDNetEnhancer(BaseEnhancer):
             return weight_file
 
         os.makedirs(weights_dir, exist_ok=True)
-        print("[HVI-CIDNet] Downloading Generalization weights from HuggingFace...")
+        print("[HVI-CIDNet] Downloading LOL-v1 (wperc) weights from HuggingFace...")
 
         try:
             from huggingface_hub import hf_hub_download
             downloaded = hf_hub_download(
-                repo_id="Fediory/HVI-CIDNet-Generalization",
+                repo_id="Fediory/HVI-CIDNet-LOLv1-wperc",
                 filename="pytorch_model.bin",
                 local_dir=weights_dir,
             )
@@ -74,7 +74,7 @@ class HVICIDNetEnhancer(BaseEnhancer):
             return weight_file
         except ImportError:
             # Fallback: direct URL download
-            url = "https://huggingface.co/Fediory/HVI-CIDNet-Generalization/resolve/main/pytorch_model.bin"
+            url = "https://huggingface.co/Fediory/HVI-CIDNet-LOLv1-wperc/resolve/main/pytorch_model.bin"
             import urllib.request
             print(f"[HVI-CIDNet] Downloading from: {url}")
             urllib.request.urlretrieve(url, weight_file)
@@ -82,7 +82,7 @@ class HVICIDNetEnhancer(BaseEnhancer):
             return weight_file
 
     def load_model(self, device: str = None) -> None:
-        """Load HVI-CIDNet model with Generalization weights.
+        """Load HVI-CIDNet model with LOL-v1 (wperc) weights.
 
         Args:
             device: 'cuda', 'cpu', or None (auto-detect)

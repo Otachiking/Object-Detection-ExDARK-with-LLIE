@@ -4,14 +4,14 @@
 
 scenario:
   name: "s2_hvi_cidnet"
-  description: "HVI-CIDNet enhanced ExDark → YOLOv11n"
+  description: "HVI-CIDNet (LOL-v1 wperc) enhanced ExDark → YOLOv11n"
   enhancer: "hvi_cidnet"
 
 enhancer_config:
   repo_url: "https://github.com/Fediory/HVI-CIDNet.git"
   weight_source: "huggingface"
-  weight_repo: "Fediory/HVI-CIDNet-Generalization"
-  weight_file: "net_rgb.pth"
+  weight_repo: "Fediory/HVI-CIDNet-LOLv1-wperc"
+  weight_file: "pytorch_model.bin"
   # Inference parameters (tunable)
   alpha_s: 1.0
   alpha_i: 1.0
