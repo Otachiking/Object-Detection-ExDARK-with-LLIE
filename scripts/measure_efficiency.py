@@ -36,7 +36,7 @@ def run_scenario(scenario: str, quick_test: bool, config_dir: str = None):
     output_root = paths["output_root"]
     eval_dir = os.path.join(output_root, "evaluation", scenario_name)
 
-    enhancer_name = cfg.get("enhancer", {}).get("name", None)
+    enhancer_name = cfg.get("scenario", {}).get("enhancer", None)
     has_enhancer = enhancer_name and enhancer_name.lower() != "none"
 
     print("\n" + "=" * 60)

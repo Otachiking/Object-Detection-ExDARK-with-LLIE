@@ -54,7 +54,7 @@ def main():
     print(f"Weights: {weights_path}")
 
     # Dataset YAML
-    enhancer_name = cfg.get("enhancer", {}).get("name", None)
+    enhancer_name = cfg.get("scenario", {}).get("enhancer", None)
     if enhancer_name and enhancer_name.lower() != "none":
         data_yaml = os.path.join(output_root, f"ExDark_enhanced_{enhancer_name}", "dataset.yaml")
     else:

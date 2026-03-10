@@ -31,7 +31,7 @@ def main():
     set_global_seed(cfg["seed"])
 
     scenario_name = cfg.get("scenario_name", args.scenario)
-    enhancer_name = cfg.get("enhancer", {}).get("name", None)
+    enhancer_name = cfg.get("scenario", {}).get("enhancer", None)
 
     if enhancer_name is None or enhancer_name.lower() == "none":
         print(f"[ENHANCE] Scenario {scenario_name} has no enhancer. Nothing to do.")

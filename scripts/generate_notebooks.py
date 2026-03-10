@@ -205,7 +205,7 @@ enhanced_dir  = None
 import torch
 from src.enhancement.run_enhancement import enhance_dataset, get_enhancer
 
-enhancer_name = cfg.get("enhancer", {}).get("name", None)
+enhancer_name = cfg.get("scenario", {}).get("enhancer", None)
 assert enhancer_name and enhancer_name.lower() != "none", \\
     "No enhancer configured for this scenario!"
 
