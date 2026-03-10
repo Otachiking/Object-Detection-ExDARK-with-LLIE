@@ -101,7 +101,7 @@ class RetinexFormerEnhancer(BaseEnhancer):
         )
 
         # Load weights
-        checkpoint = torch.load(self.weight_path, map_location=device, weights_only=False)
+        checkpoint = torch.load(self.weight_path, map_location=self.device, weights_only=False)
         if "params" in checkpoint:
             self.model.load_state_dict(checkpoint["params"])
         elif "state_dict" in checkpoint:
@@ -109,10 +109,10 @@ class RetinexFormerEnhancer(BaseEnhancer):
         else:
             self.model.load_state_dict(checkpoint)
 
-        self.model.to(device)
+        self.model.to(self.device)
         self.model.eval()
         self._loaded = True
-        print(f"[RetinexFormer] Model loaded on {device}")
+        print(f"[RetinexFormer] Model loaded on {self.device}")
 
     @torch.no_grad()
     def enhance(self, img_bgr: np.ndarray) -> np.ndarray:

@@ -109,7 +109,7 @@ class HVICIDNetEnhancer(BaseEnhancer):
 
         # Initialize model
         self.model = CIDNet()
-        checkpoint = torch.load(self.weight_path, map_location=device, weights_only=False)
+        checkpoint = torch.load(self.weight_path, map_location=self.device, weights_only=False)
 
         # Handle different checkpoint formats
         if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
@@ -119,10 +119,10 @@ class HVICIDNetEnhancer(BaseEnhancer):
         else:
             self.model.load_state_dict(checkpoint)
 
-        self.model.to(device)
+        self.model.to(self.device)
         self.model.eval()
         self._loaded = True
-        print(f"[HVI-CIDNet] Model loaded on {device}")
+        print(f"[HVI-CIDNet] Model loaded on {self.device}")
 
     @torch.no_grad()
     def enhance(self, img_bgr: np.ndarray) -> np.ndarray:

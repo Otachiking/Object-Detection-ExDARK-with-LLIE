@@ -115,7 +115,7 @@ class LYTNetEnhancer(BaseEnhancer):
             )
 
         # Load weights
-        checkpoint = torch.load(self.weight_path, map_location=device, weights_only=False)
+        checkpoint = torch.load(self.weight_path, map_location=self.device, weights_only=False)
         if isinstance(checkpoint, dict):
             if "state_dict" in checkpoint:
                 model.load_state_dict(checkpoint["state_dict"])
@@ -126,11 +126,11 @@ class LYTNetEnhancer(BaseEnhancer):
         else:
             model.load_state_dict(checkpoint)
 
-        model.to(device)
+        model.to(self.device)
         model.eval()
         self.model = model
         self._loaded = True
-        print(f"[LYT-Net] Model loaded on {device}")
+        print(f"[LYT-Net] Model loaded on {self.device}")
 
     @torch.no_grad()
     def enhance(self, img_bgr: np.ndarray) -> np.ndarray:
