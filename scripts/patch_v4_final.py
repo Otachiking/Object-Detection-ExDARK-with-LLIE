@@ -4,9 +4,12 @@ Patch v4: Final notebook rebuild.
 Changes vs v3:
 - Flat runs/ (no redundant scenario subfolder) via run_name="runs"
 - Fase 3.5: Show Ultralytics results.png + train batch images
-- New Fase 4.55: Validation batch grid (pred vs labels)
+- NEW Fase 4.55: Validation batch grid (pred vs labels)
 - Fase 4.6: Use Ultralytics CM images instead of recomputing
-- get_best_weights(SCENARIO_RUNS) everywhere (not SCENARIO_RUNS/SCENARIO_NAME)
+- get_best_weights(SCENARIO_RUNS) everywhere
+- Fase 2.5: GridSpec layout with width_ratios for uniform row height
+- Fase 4.5 & 4.55: Tighter spacing between title/content/columns
+- cellView: "form" for auto-collapse from Fase 2.5 onwards
 
 Rebuilds ALL 4 scenario notebooks from scratch.
 """
@@ -160,26 +163,66 @@ del enhancer
 if torch.cuda.is_available(): torch.cuda.empty_cache()
 '''
 
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║ Fase 2.5 — Preview grids with GridSpec uniform-height rows      ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+
 PREVIEW_NO_ENH = r'''#@title Fase 2.5 · Sample Test Images (3x3 Grid)
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import matplotlib.gridspec as gridspec
 import glob as _glob
 
 test_img_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
-sample_images = sorted(_glob.glob(os.path.join(test_img_dir, "*.*")))[:9]
+sample_paths = sorted(_glob.glob(os.path.join(test_img_dir, "*.*")))[:9]
 
-fig, axes = plt.subplots(3, 3, figsize=(14, 14))
-fig.suptitle(f"Sample Test Images — {SCENARIO_NAME}\n(No Enhancement — Raw Low-Light)",
-             fontsize=16, fontweight='bold', y=1.02)
+# Load images and compute aspect ratios (width / height)
+images, aspects, fnames = [], [], []
+for p in sample_paths:
+    img = mpimg.imread(p)
+    images.append(img)
+    aspects.append(img.shape[1] / img.shape[0])
+    fnames.append(os.path.basename(p))
 
-for idx, ax in enumerate(axes.flat):
-    if idx < len(sample_images):
-        img = mpimg.imread(sample_images[idx])
-        ax.imshow(img)
-        ax.set_title(os.path.basename(sample_images[idx]), fontsize=9)
-    ax.axis('off')
+n_cols     = 3
+n_rows     = (len(images) + n_cols - 1) // n_cols
+row_height = 4.5                                         # inches per row
+fig_h      = row_height * n_rows + 1.2                   # + title margin
 
-plt.tight_layout()
+fig = plt.figure(figsize=(18, fig_h))
+fig.suptitle(
+    f"Sample Test Images — {SCENARIO_NAME}\n"
+    "(No Enhancement — Raw Low-Light)",
+    fontsize=16, fontweight='bold')
+
+# Outer grid: one slot per row
+outer = gridspec.GridSpec(n_rows, 1, figure=fig,
+                          hspace=0.08, top=0.92, bottom=0.02,
+                          left=0.02, right=0.98)
+
+for row in range(n_rows):
+    s, e = row * n_cols, min((row + 1) * n_cols, len(images))
+    row_imgs    = images[s:e]
+    row_aspects = aspects[s:e]
+    row_fnames  = fnames[s:e]
+
+    # Pad if last row has fewer images
+    padded = list(row_aspects)
+    while len(padded) < n_cols:
+        padded.append(1.0)
+
+    # Inner grid: width_ratios = aspect ratios → uniform height
+    inner = gridspec.GridSpecFromSubplotSpec(
+        1, n_cols, subplot_spec=outer[row],
+        width_ratios=padded, wspace=0.03)
+
+    for col in range(n_cols):
+        ax = fig.add_subplot(inner[col])
+        if col < len(row_imgs):
+            ax.imshow(row_imgs[col])
+            ax.set_title(row_fnames[col], fontsize=9)
+        ax.axis('off')
+
 os.makedirs(SCENARIO_EVAL, exist_ok=True)
 plt.savefig(os.path.join(SCENARIO_EVAL, "sample_test_images.png"),
             dpi=150, bbox_inches='tight')
@@ -187,48 +230,75 @@ plt.show()
 print(f"Saved -> {SCENARIO_EVAL}/sample_test_images.png")
 '''
 
-PREVIEW_ENH = r'''#@title Fase 2.5 · Original vs Enhanced (3x3 Paired Grid)
+PREVIEW_ENH = r'''#@title Fase 2.5 · Original vs Enhanced (Paired Grid)
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import matplotlib.gridspec as gridspec
 import glob as _glob
 
 raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
 enh_test_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test")
 
-raw_images = sorted(_glob.glob(os.path.join(raw_test_dir, "*.*")))[:9]
+raw_paths = sorted(_glob.glob(os.path.join(raw_test_dir, "*.*")))[:9]
 
-fig, axes = plt.subplots(6, 3, figsize=(15, 28))
-fig.suptitle(f"Original (Low-Light) vs Enhanced ({enhancer_name}) — {SCENARIO_NAME}",
-             fontsize=16, fontweight='bold', y=1.01)
+# Load raw images and compute aspect ratios
+images_raw, aspects, fnames = [], [], []
+for p in raw_paths:
+    img = mpimg.imread(p)
+    images_raw.append(img)
+    aspects.append(img.shape[1] / img.shape[0])
+    fnames.append(os.path.basename(p))
 
-for i in range(9):
-    row_orig = (i // 3) * 2
-    row_enh  = row_orig + 1
-    col      = i % 3
+n_cols     = 3
+n_groups   = (len(images_raw) + n_cols - 1) // n_cols    # pair-groups
+row_height = 3.0                                          # per sub-row
+fig_h      = row_height * n_groups * 2 + 1.5              # 2 sub-rows/group
 
-    if i < len(raw_images):
-        fname = os.path.basename(raw_images[i])
+fig = plt.figure(figsize=(18, fig_h))
+fig.suptitle(
+    f"Original (Low-Light) vs Enhanced ({enhancer_name}) — {SCENARIO_NAME}",
+    fontsize=16, fontweight='bold')
 
-        raw_img = mpimg.imread(raw_images[i])
-        axes[row_orig, col].imshow(raw_img)
-        axes[row_orig, col].set_title(f"Original: {fname}", fontsize=8)
-        axes[row_orig, col].axis('off')
+outer = gridspec.GridSpec(n_groups, 1, figure=fig,
+                          hspace=0.12, top=0.95, bottom=0.01,
+                          left=0.02, right=0.98)
 
-        enh_path = os.path.join(enh_test_dir, fname)
-        if os.path.exists(enh_path):
-            enh_img = mpimg.imread(enh_path)
-            axes[row_enh, col].imshow(enh_img)
-            axes[row_enh, col].set_title(f"Enhanced: {fname}", fontsize=8)
-        else:
-            axes[row_enh, col].text(0.5, 0.5, "Enhanced not found",
-                                     ha='center', va='center',
-                                     transform=axes[row_enh, col].transAxes, fontsize=10)
-        axes[row_enh, col].axis('off')
-    else:
-        axes[row_orig, col].axis('off')
-        axes[row_enh, col].axis('off')
+for g in range(n_groups):
+    s, e = g * n_cols, min((g + 1) * n_cols, len(images_raw))
+    grp_imgs    = images_raw[s:e]
+    grp_aspects = aspects[s:e]
+    grp_fnames  = fnames[s:e]
 
-plt.tight_layout()
+    padded = list(grp_aspects)
+    while len(padded) < n_cols:
+        padded.append(1.0)
+
+    # Inner: 2 rows (orig, enh), n_cols columns
+    inner = gridspec.GridSpecFromSubplotSpec(
+        2, n_cols, subplot_spec=outer[g],
+        width_ratios=padded, hspace=0.04, wspace=0.03)
+
+    for col in range(n_cols):
+        # Top: original
+        ax_o = fig.add_subplot(inner[0, col])
+        if col < len(grp_imgs):
+            ax_o.imshow(grp_imgs[col])
+            ax_o.set_title(f"Original: {grp_fnames[col]}", fontsize=8)
+        ax_o.axis('off')
+
+        # Bottom: enhanced
+        ax_e = fig.add_subplot(inner[1, col])
+        if col < len(grp_imgs):
+            enh_path = os.path.join(enh_test_dir, grp_fnames[col])
+            if os.path.exists(enh_path):
+                ax_e.imshow(mpimg.imread(enh_path))
+                ax_e.set_title(f"Enhanced: {grp_fnames[col]}", fontsize=8)
+            else:
+                ax_e.text(0.5, 0.5, "Enhanced not found",
+                          ha='center', va='center',
+                          transform=ax_e.transAxes, fontsize=10)
+        ax_e.axis('off')
+
 os.makedirs(SCENARIO_EVAL, exist_ok=True)
 plt.savefig(os.path.join(SCENARIO_EVAL, "sample_original_vs_enhanced.png"),
             dpi=150, bbox_inches='tight')
@@ -427,6 +497,10 @@ if per_cls:
     display(df_cls)
 '''
 
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║ Fase 4.5 — Detection GT vs Pred  (tighter spacing)              ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+
 DET_VIZ_CODE = r'''#@title Fase 4.5 · Detection Visualization (GT vs Prediction)
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -495,14 +569,17 @@ def _parse_pred(results):
                       "conf": float(box.conf[0])})
     return boxes
 
-# ── Plot: 9 rows x 2 cols (GT left, Pred right) ──
+# ─────────────────────────────────────────────────────────────────
+# Plot: N rows × 2 cols  (GT left, Pred right)
+# Config:  wspace=0.02  hspace=0.06  suptitle y=0.998  top=0.97
+# ─────────────────────────────────────────────────────────────────
 n = len(sample_imgs)
-fig, axes = plt.subplots(n, 2, figsize=(16, 4.5 * n),
-                         gridspec_kw={"wspace": 0.03, "hspace": 0.12})
+fig, axes = plt.subplots(n, 2, figsize=(16, 4.0 * n),
+                         gridspec_kw={"wspace": 0.02, "hspace": 0.06})
 fig.suptitle(
     f"Detection Results — {SCENARIO_NAME}\n"
     "Left: Ground Truth  |  Right: Prediction (conf >= 0.25)",
-    fontsize=16, fontweight="bold", y=1.0)
+    fontsize=16, fontweight="bold", y=0.998)
 
 if n == 1: axes = axes.reshape(1, 2)
 
@@ -523,7 +600,7 @@ for idx, img_path in enumerate(sample_imgs):
     axes[idx, 1].set_title(f"Pred: {fname}", fontsize=9, loc="left")
     axes[idx, 1].axis("off")
 
-plt.tight_layout()
+plt.subplots_adjust(top=0.97)
 save_path = os.path.join(SCENARIO_EVAL, "detection_samples_gt_vs_pred.png")
 plt.savefig(save_path, dpi=150, bbox_inches="tight")
 plt.show()
@@ -533,6 +610,10 @@ del _model
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
 '''
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║ Fase 4.55 — Validation batch grid  (tighter spacing)            ║
+# ╚═══════════════════════════════════════════════════════════════════╝
 
 VAL_BATCH_CODE = r'''#@title Fase 4.55 · Validation Batch Grid (Pred vs Labels)
 import matplotlib.pyplot as plt
@@ -544,11 +625,13 @@ val_labels = sorted(_glob.glob(os.path.join(SCENARIO_RUNS, "val_batch*_labels.jp
 
 if val_pred and val_labels:
     n_cols = max(len(val_pred), len(val_labels))
-    fig, axes = plt.subplots(2, n_cols, figsize=(8 * n_cols, 16))
+
+    # Config:  figsize=(8*n_cols, 14)  top=0.94  hspace=0.04  wspace=0.02
+    fig, axes = plt.subplots(2, n_cols, figsize=(8 * n_cols, 14))
     fig.suptitle(
         f"Validation Batches — {SCENARIO_NAME}\n"
         "Top row: Predictions  |  Bottom row: Ground Truth Labels",
-        fontsize=15, fontweight='bold', y=1.01)
+        fontsize=15, fontweight='bold', y=0.998)
 
     if n_cols == 1:
         axes = axes.reshape(2, 1)
@@ -566,7 +649,7 @@ if val_pred and val_labels:
             axes[1, i].set_title(os.path.basename(val_labels[i]), fontsize=10)
         axes[1, i].axis('off')
 
-    plt.tight_layout()
+    plt.subplots_adjust(top=0.94, hspace=0.04, wspace=0.02)
     save_path = os.path.join(SCENARIO_EVAL, "val_batch_pred_vs_labels.png")
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.show()
@@ -687,7 +770,10 @@ if enhancer_obj: del enhancer_obj
 if torch.cuda.is_available(): torch.cuda.empty_cache()
 '''
 
-# MD cells
+# ═══════════════════════════════════════════════════════════════════
+#  MARKDOWN CELLS
+# ═══════════════════════════════════════════════════════════════════
+
 PREVIEW_MD_NO_ENH = ["---\n", "## Fase 2.5: Sample Test Images Preview"]
 PREVIEW_MD_ENH = ["---\n", "## Fase 2.5: Sample Test Images — Original vs Enhanced"]
 TRAIN_CURVES_MD = [
@@ -721,18 +807,30 @@ CM_MD = [
 ]
 
 
+# ═══════════════════════════════════════════════════════════════════
+#  HELPERS
+# ═══════════════════════════════════════════════════════════════════
+
 def mk_md(source):
     return {"cell_type": "markdown", "metadata": {}, "source": source}
 
-def mk_code(text):
+def mk_code(text, hide=False):
+    """Create a code cell.  If hide=True, add cellView:'form' for Colab auto-collapse."""
+    meta = {}
+    if hide:
+        meta["cellView"] = "form"
     return {
         "cell_type": "code",
         "execution_count": None,
-        "metadata": {},
+        "metadata": meta,
         "outputs": [],
         "source": _lines(text),
     }
 
+
+# ═══════════════════════════════════════════════════════════════════
+#  NOTEBOOK BUILDER
+# ═══════════════════════════════════════════════════════════════════
 
 def build_notebook(scenario_info):
     name = scenario_info["name"]
@@ -760,7 +858,7 @@ def build_notebook(scenario_info):
         "Setelah **semua 4 skenario** selesai buka **comparison.ipynb**.\n",
     ]))
 
-    # ── 0. Setup ──
+    # ── 0. Setup (visible — early cells stay open) ──
     cells.append(mk_md(["## 0. Setup"]))
 
     cells.append(mk_code(f'''#@title 0.1 · Mount Drive & Clone Repo
@@ -811,56 +909,56 @@ else:
 
     cells.append(mk_code(SETUP_CONFIG_CODE))
 
-    # ── Fase 1 ──
+    # ── Fase 1 (visible) ──
     cells.append(mk_md(["---\n", "## Fase 1: Data Preparation"]))
     cells.append(mk_code(FASE1_CODE))
 
-    # ── Fase 2 ──
+    # ── Fase 2 (visible) ──
     cells.append(mk_md(["---\n", "## Fase 2: Image Enhancement"]))
     if has_enh:
         cells.append(mk_code(FASE2_ENH_CODE))
     else:
         cells.append(mk_code(FASE2_SKIP_CODE))
 
-    # ── Fase 2.5 ──
+    # ── Fase 2.5+ → hide=True (auto-collapse in Colab) ──
     if has_enh:
         cells.append(mk_md(PREVIEW_MD_ENH))
-        cells.append(mk_code(PREVIEW_ENH))
+        cells.append(mk_code(PREVIEW_ENH, hide=True))
     else:
         cells.append(mk_md(PREVIEW_MD_NO_ENH))
-        cells.append(mk_code(PREVIEW_NO_ENH))
+        cells.append(mk_code(PREVIEW_NO_ENH, hide=True))
 
     # ── Fase 3 ──
     cells.append(mk_md(["---\n", "## Fase 3: Training"]))
-    cells.append(mk_code(FASE3_CODE))
+    cells.append(mk_code(FASE3_CODE, hide=True))
 
     # ── Fase 3.5 ──
     cells.append(mk_md(TRAIN_CURVES_MD))
-    cells.append(mk_code(TRAIN_CURVES_CODE))
+    cells.append(mk_code(TRAIN_CURVES_CODE, hide=True))
 
     # ── Fase 4 ──
     cells.append(mk_md(["---\n", "## Fase 4: Detection Evaluation"]))
-    cells.append(mk_code(FASE4_CODE))
+    cells.append(mk_code(FASE4_CODE, hide=True))
 
     # ── Fase 4.5 ──
     cells.append(mk_md(DET_VIZ_MD))
-    cells.append(mk_code(DET_VIZ_CODE))
+    cells.append(mk_code(DET_VIZ_CODE, hide=True))
 
-    # ── Fase 4.55 (NEW) ──
+    # ── Fase 4.55 ──
     cells.append(mk_md(VAL_BATCH_MD))
-    cells.append(mk_code(VAL_BATCH_CODE))
+    cells.append(mk_code(VAL_BATCH_CODE, hide=True))
 
     # ── Fase 4.6 ──
     cells.append(mk_md(CM_MD))
-    cells.append(mk_code(CM_CODE))
+    cells.append(mk_code(CM_CODE, hide=True))
 
     # ── Fase 5 ──
     cells.append(mk_md(["---\n", "## Fase 5: Image Quality Metrics"]))
-    cells.append(mk_code(FASE5_CODE))
+    cells.append(mk_code(FASE5_CODE, hide=True))
 
     # ── Fase 6 ──
     cells.append(mk_md(["---\n", "## Fase 6: Latency & FLOPs"]))
-    cells.append(mk_code(FASE6_CODE))
+    cells.append(mk_code(FASE6_CODE, hide=True))
 
     # ── Done ──
     cells.append(mk_code(f'''#@title Done — {name} complete
