@@ -28,6 +28,11 @@ def _is_colab() -> bool:
         return False
 
 
+def _is_kaggle() -> bool:
+    """Detect if running on Kaggle."""
+    return os.environ.get("KAGGLE_KERNEL_RUN_TYPE") is not None
+
+
 def _interpolate_vars(data: Any, variables: Dict[str, str]) -> Any:
     """Recursively interpolate ${var} placeholders in strings."""
     if isinstance(data, str):
@@ -98,8 +103,14 @@ def load_config(
     scenario_cfg = load_yaml(scenario_file) if os.path.exists(scenario_file) else {}
 
     # Determine environment
-    is_colab = _is_colab()
-    env_key = "colab" if is_colab else "local"
+    is_kaggle = _is_kaggle()
+    is_colab = _is_colab() and not is_kaggle
+    if is_kaggle:
+        env_key = "kaggle"
+    elif is_colab:
+        env_key = "colab"
+    else:
+        env_key = "local"
     env_paths = paths.get(env_key, {})
 
     # Build interpolation variables
@@ -144,6 +155,7 @@ def load_config(
     # Add environment info
     config["environment"] = {
         "is_colab": is_colab,
+        "is_kaggle": is_kaggle,
         "env_key": env_key,
         "platform": platform.system(),
     }

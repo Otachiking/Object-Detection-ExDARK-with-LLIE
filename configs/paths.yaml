@@ -32,6 +32,19 @@ colab:
 
   model_cache: "${drive_root}/model_cache"
 
+# Kaggle Notebook
+kaggle:
+  drive_root: "/kaggle/working"
+  project_root: "/kaggle/working/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
+
+  data:
+    # Add ExDark as Kaggle Dataset (nama default: "exdark-dataset")
+    # → muncul di /kaggle/input/exdark-dataset/
+    # Ubah path di bawah jika nama dataset berbeda.
+    exdark_original: "/kaggle/input/exdark-dataset"
+
+  model_cache: "/kaggle/working/model_cache"
+
 # Local development (Windows)
 local:
   drive_root: "c:/CODE/KULIAH/TA"

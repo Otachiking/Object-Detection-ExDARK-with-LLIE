@@ -501,7 +501,7 @@ if per_cls:
 # ║ Fase 4.5 — Detection GT vs Pred  (tighter spacing)              ║
 # ╚═══════════════════════════════════════════════════════════════════╝
 
-DET_VIZ_CODE = r'''#@title Fase 4.5 · Detection Visualization (GT vs Prediction)
+DET_VIZ_CODE = r'''#@title Fase 4.5 · Detection Visualization
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.image as mpimg
@@ -517,17 +517,24 @@ CLASS_NAMES = {
 }
 BOX_COLORS = {i: plt.cm.tab20(i / 12) for i in range(12)}
 
-# ── Paths ──
-if enhancer_name and str(enhancer_name).lower() != "none":
-    test_img_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test")
+# ── Determine layout ──
+has_enh = enhancer_name and str(enhancer_name).lower() != "none"
+
+if has_enh:
+    raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+    enh_test_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test")
+    test_img_dir = enh_test_dir
+    n_samples, n_cols = 6, 4   # Original | Enhanced | Pred | GT
 else:
     test_img_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
+    n_samples, n_cols = 9, 2   # Pred | GT
+
 test_lbl_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "labels", "test")
 
 _w = get_best_weights(SCENARIO_RUNS)
 _model = YOLO(_w)
 
-sample_imgs = sorted(_glob.glob(os.path.join(test_img_dir, "*.*")))[:9]
+sample_imgs = sorted(_glob.glob(os.path.join(test_img_dir, "*.*")))[:n_samples]
 
 def _draw_boxes(ax, boxes_data, mode="gt"):
     for b in boxes_data:
@@ -541,7 +548,7 @@ def _draw_boxes(ax, boxes_data, mode="gt"):
         if mode == "pred":
             label = f"{label} {b['conf']:.2f}"
         ax.text(b["x1"], max(b["y1"] - 3, 0), label,
-                fontsize=7, color="white",
+                fontsize=6, color="white",
                 bbox=dict(boxstyle="round,pad=0.15",
                           facecolor=color, alpha=0.85))
 
@@ -570,41 +577,70 @@ def _parse_pred(results):
     return boxes
 
 # ─────────────────────────────────────────────────────────────────
-# Plot: N rows × 2 cols  (GT left, Pred right)
-# Config:  wspace=0.02  hspace=0.06  suptitle y=0.998  top=0.97
+# Layout (left to right):
+#   Enhanced: Original | Enhanced | Prediction | Ground Truth
+#   Baseline: Prediction | Ground Truth
 # ─────────────────────────────────────────────────────────────────
 n = len(sample_imgs)
-fig, axes = plt.subplots(n, 2, figsize=(16, 4.0 * n),
+fig_w = 20 if has_enh else 16
+fig, axes = plt.subplots(n, n_cols, figsize=(fig_w, 4.0 * n),
                          gridspec_kw={"wspace": 0.02, "hspace": 0.06})
-fig.suptitle(
-    f"Detection Results — {SCENARIO_NAME}\n"
-    "Left: Ground Truth  |  Right: Prediction (conf >= 0.25)",
-    fontsize=16, fontweight="bold", y=0.998)
 
-if n == 1: axes = axes.reshape(1, 2)
+if has_enh:
+    suptitle = (f"Detection Pipeline — {SCENARIO_NAME}\n"
+                "Original  |  Enhanced  |  Prediction (conf >= 0.25)  |  Ground Truth")
+else:
+    suptitle = (f"Detection Results — {SCENARIO_NAME}\n"
+                "Prediction (conf >= 0.25)  |  Ground Truth")
+
+fig.suptitle(suptitle, fontsize=16, fontweight="bold", y=0.998)
+
+if n == 1:
+    axes = axes.reshape(1, n_cols)
 
 for idx, img_path in enumerate(sample_imgs):
     fname = os.path.basename(img_path)
     img = mpimg.imread(img_path)
     h, w = img.shape[:2]
+    lbl_path = os.path.join(test_lbl_dir, os.path.splitext(fname)[0] + ".txt")
 
-    axes[idx, 0].imshow(img, aspect="equal")
-    lbl = os.path.join(test_lbl_dir, os.path.splitext(fname)[0] + ".txt")
-    _draw_boxes(axes[idx, 0], _parse_gt(lbl, h, w), mode="gt")
-    axes[idx, 0].set_title(f"GT: {fname}", fontsize=9, loc="left")
-    axes[idx, 0].axis("off")
+    if has_enh:
+        # Col 0: Original (raw low-light, no boxes)
+        raw_path = os.path.join(raw_test_dir, fname)
+        if os.path.exists(raw_path):
+            axes[idx, 0].imshow(mpimg.imread(raw_path))
+        axes[idx, 0].set_title(f"Original: {fname}", fontsize=8, loc="left")
+        axes[idx, 0].axis("off")
 
-    axes[idx, 1].imshow(img, aspect="equal")
-    pred = _model.predict(img_path, conf=0.25, verbose=False)
-    _draw_boxes(axes[idx, 1], _parse_pred(pred), mode="pred")
-    axes[idx, 1].set_title(f"Pred: {fname}", fontsize=9, loc="left")
-    axes[idx, 1].axis("off")
+        # Col 1: Enhanced (no boxes)
+        axes[idx, 1].imshow(img, aspect="equal")
+        axes[idx, 1].set_title("Enhanced", fontsize=8, loc="left")
+        axes[idx, 1].axis("off")
+
+        pred_col, gt_col = 2, 3
+    else:
+        pred_col, gt_col = 0, 1
+
+    # Prediction column
+    axes[idx, pred_col].imshow(img, aspect="equal")
+    pred_results = _model.predict(img_path, conf=0.25, verbose=False)
+    _draw_boxes(axes[idx, pred_col], _parse_pred(pred_results), mode="pred")
+    lbl_pred = f"Pred: {fname}" if not has_enh else "Prediction"
+    axes[idx, pred_col].set_title(lbl_pred, fontsize=8, loc="left")
+    axes[idx, pred_col].axis("off")
+
+    # Ground Truth column
+    axes[idx, gt_col].imshow(img, aspect="equal")
+    _draw_boxes(axes[idx, gt_col], _parse_gt(lbl_path, h, w), mode="gt")
+    lbl_gt = f"GT: {fname}" if not has_enh else "Ground Truth"
+    axes[idx, gt_col].set_title(lbl_gt, fontsize=8, loc="left")
+    axes[idx, gt_col].axis("off")
 
 plt.subplots_adjust(top=0.97)
-save_path = os.path.join(SCENARIO_EVAL, "detection_samples_gt_vs_pred.png")
+save_path = os.path.join(SCENARIO_EVAL, "detection_samples.png")
 plt.savefig(save_path, dpi=150, bbox_inches="tight")
 plt.show()
-print(f"Saved -> {SCENARIO_EVAL}/detection_samples_gt_vs_pred.png")
+print(f"Saved -> {save_path}")
 
 del _model
 if torch.cuda.is_available():
@@ -785,12 +821,25 @@ TRAIN_CURVES_MD = [
     "- **results.png**: Grafik lengkap dari Ultralytics\n",
     "- **train_batch**: Sample gambar augmentasi training"
 ]
-DET_VIZ_MD = [
+DET_VIZ_MD_NO_ENH = [
     "---\n",
     "## Fase 4.5: Detection Samples — Predictions vs Ground Truth\n",
     "Visualisasi 9 sample test images:\n",
-    "- **Kolom kiri**: Ground truth bounding boxes\n",
-    "- **Kolom kanan**: Prediksi model (bounding box + class label + confidence score)"
+    "- **Kolom kiri**: Prediction (bounding box + confidence score)\n",
+    "- **Kolom kanan**: Ground Truth (bounding box anotasi)\n",
+    "\n",
+    "Urutan: **Prediction \u2192 Ground Truth**"
+]
+DET_VIZ_MD_ENH = [
+    "---\n",
+    "## Fase 4.5: Detection Pipeline Visualization\n",
+    "Visualisasi 6 sample test images — pipeline lengkap:\n",
+    "- **Kolom 1**: Original (low-light, tanpa bounding box)\n",
+    "- **Kolom 2**: Enhanced (setelah LLIE, tanpa bounding box)\n",
+    "- **Kolom 3**: Prediction (bounding box + confidence score)\n",
+    "- **Kolom 4**: Ground Truth (bounding box anotasi)\n",
+    "\n",
+    "Urutan konsisten: **Original \u2192 Enhanced \u2192 Prediction \u2192 Ground Truth**"
 ]
 VAL_BATCH_MD = [
     "---\n",
@@ -861,37 +910,50 @@ def build_notebook(scenario_info):
     # ── 0. Setup (visible — early cells stay open) ──
     cells.append(mk_md(["## 0. Setup"]))
 
-    cells.append(mk_code(f'''#@title 0.1 · Mount Drive & Clone Repo
-from google.colab import drive
-drive.mount('/content/drive')
+    cells.append(mk_code(f'''#@title 0.1 · Environment Setup & Clone Repo
+import os, subprocess, sys, shutil
 
-import os, subprocess, sys
-
-# ── Config ──────────────────────────────────────────────────────
-QUICK_TEST  = True  # @param {{type:"boolean"}}
+# ── Config ───────────────────────────────────────────────────────
+QUICK_TEST  = True   # @param {{type:"boolean"}}
 REPO_URL    = "https://github.com/Otachiking/Object-Detection-ExDARK-with-LLIE.git"
-DRIVE_ROOT  = "/content/drive/MyDrive/KULIAH-S1INFORMATIKA/TA-IQBAL"
-
 SCENARIO_KEY  = "{key}"   # DO NOT CHANGE
 SCENARIO_NAME = "{name}"  # DO NOT CHANGE
 
-# ── Clone / pull ─────────────────────────────────────────────────
-REPO_DIR = "/content/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
-if os.path.isdir(os.path.join(REPO_DIR, ".git")):
-    print("Resetting repo to latest origin/main ...")
-    subprocess.run(["git","-C",REPO_DIR,"fetch","origin"], check=True)
-    subprocess.run(["git","-C",REPO_DIR,"reset","--hard","origin/main"], check=True)
+# ── Detect Environment ───────────────────────────────────────────
+_IS_KAGGLE = "KAGGLE_KERNEL_RUN_TYPE" in os.environ
+_IS_COLAB  = not _IS_KAGGLE and os.path.exists("/content")
+
+if _IS_COLAB:
+    from google.colab import drive
+    drive.mount("/content/drive")
+    REPO_DIR = "/content/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
+    print("[ENV] Google Colab")
+elif _IS_KAGGLE:
+    REPO_DIR = "/kaggle/working/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
+    print("[ENV] Kaggle Notebook")
+    print("  -> Pastikan ExDark dataset ditambahkan sebagai Input Dataset")
+    print("     dengan nama 'exdark-dataset'")
 else:
-    import shutil
-    if os.path.exists(REPO_DIR): shutil.rmtree(REPO_DIR)
+    raise RuntimeError(
+        "Notebook ini dirancang untuk Google Colab atau Kaggle.\\n"
+        "Jalankan di salah satu platform tersebut."
+    )
+
+# ── Clone / Pull ─────────────────────────────────────────────────
+if os.path.isdir(os.path.join(REPO_DIR, ".git")):
+    print("Repo exists — resetting to origin/main ...")
+    subprocess.run(["git", "-C", REPO_DIR, "fetch", "origin"], check=True)
+    subprocess.run(["git", "-C", REPO_DIR, "reset", "--hard", "origin/main"], check=True)
+else:
+    if os.path.exists(REPO_DIR):
+        shutil.rmtree(REPO_DIR)
     print("Cloning repo ...")
-    subprocess.run(["git","clone",REPO_URL,REPO_DIR], check=True)
+    subprocess.run(["git", "clone", REPO_URL, REPO_DIR], check=True)
 
 os.chdir(REPO_DIR)
 sys.path.insert(0, REPO_DIR)
-print(f"\\nScenario : {{SCENARIO_NAME}}")
-print(f"Quick test: {{QUICK_TEST}}")
-print(f"Drive root: {{DRIVE_ROOT}}")'''))
+print(f"\\nScenario  : {{SCENARIO_NAME}}")
+print(f"Quick test: {{QUICK_TEST}}")'''))
 
     cells.append(mk_code(r'''#@title 0.2 · Install Dependencies
 !pip install -q ultralytics pyiqa thop fvcore scipy pandas pyyaml seaborn tqdm gdown huggingface_hub
@@ -941,7 +1003,10 @@ else:
     cells.append(mk_code(FASE4_CODE, hide=True))
 
     # ── Fase 4.5 ──
-    cells.append(mk_md(DET_VIZ_MD))
+    if has_enh:
+        cells.append(mk_md(DET_VIZ_MD_ENH))
+    else:
+        cells.append(mk_md(DET_VIZ_MD_NO_ENH))
     cells.append(mk_code(DET_VIZ_CODE, hide=True))
 
     # ── Fase 4.55 ──
