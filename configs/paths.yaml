@@ -45,6 +45,11 @@ kaggle:
 
   model_cache: "/kaggle/working/model_cache"
 
+  # Pre-uploaded LLIE weights (Kaggle Dataset: llie-model-cache)
+  # Flat structure: /kaggle/input/llie-model-cache/{filename}.pth
+  # Mapping ke model_cache dilakukan di notebook setup cell.
+  model_weights_input: "/kaggle/input/llie-model-cache"
+
 # Local development (Windows)
 local:
   drive_root: "c:/CODE/KULIAH/TA"

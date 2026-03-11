@@ -26,10 +26,12 @@ env/
 outputs/
 runs/
 cache/
-*.pt
-*.pth
-*.h5
-*.onnx
+llie-weights/
+_kaggle_staging/
+# *.pt
+# *.pth
+# *.h5
+# *.onnx
 
 # ==== OS ====
 .DS_Store

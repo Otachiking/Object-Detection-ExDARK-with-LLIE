@@ -112,6 +112,7 @@ Object-Detection-ExDARK-with-LLIE/
 │   ├── evaluate.py                   # Fase 4: evaluasi mAP
 │   ├── measure_efficiency.py         # Fase 6: latency & FLOPs
 │   ├── aggregate_results.py          # Fase 7: agregasi hasil
+│   ├── upload_kaggle_datasets.py     # Upload ExDark + LLIE weights ke Kaggle Datasets
 │   ├── generate_notebooks.py         # Generator notebook dari template
 │   ├── patch_notebooks.py            # Patch v1: tambah visualisasi cells
 │   ├── patch_v2.py                   # Patch v2: fix layout, force retrain
@@ -156,12 +157,19 @@ Object-Detection-ExDARK-with-LLIE/
 │   └── utils/                        # Utilitas umum
 │       ├── __init__.py
 │       ├── io.py                     # File I/O helpers
-│       ├── logger.py                 # Logging setup
-│       ├── timer.py                  # Timer context manager
+│       ├── logger.py                 # Logging setup        ├── platform.py               # Multi-platform helpers: weight staging, Kaggle push, platform detect│       ├── timer.py                  # Timer context manager
 │       └── visualization.py          # Visualisasi hasil
 │
 ├── ProjectStructure.md               # Dokumen ini
 ├── README.md                         # Deskripsi proyek
 ├── requirements.txt                  # Dependensi Python
-└── .gitignore
+├── .gitignore
+│
+├── llie-weights/                     # LLIE pretrained weights (download manual, TIDAK di-track git)
+│   ├── hvi_cidnet_LOL_v1.pth        #   HVI-CIDNet — rename jadi pytorch_model.bin saat di model_cache
+│   ├── retinexformer_LOL_v1.pth     #   RetinexFormer — rename jadi LOL_v1.pth saat di model_cache
+│   ├── lyt_net_LOL_v1.h5            #   (INCOMPATIBLE) Keras format, kode pakai torch.load()
+│   └── PSNR_24.74.pth              #   (UNKNOWN) Bukan weight LYT-Net
+│
+└── _kaggle_staging/                  # (Auto-generated, gitignored) Staging area untuk Kaggle upload
 ```
