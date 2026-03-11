@@ -77,6 +77,58 @@ def detect_platform() -> str:
     return "local"
 
 
+def resolve_kaggle_exdark(search_root: str = "/kaggle/input") -> str | None:
+    """Auto-detect the ExDark dataset root inside /kaggle/input.
+
+    Searches for imageclasslist.txt which is uniquely inside ExDark's Groundtruth/
+    directory. Works regardless of how the dataset was mounted (slug-based or
+    via Upload button which uses /kaggle/input/datasets/).
+
+    Returns the directory that contains both Dataset/ and Groundtruth/ folders,
+    or None if not found.
+    """
+    import glob as _glob
+
+    # Search up to 3 levels deep for imageclasslist.txt
+    candidates = _glob.glob(
+        os.path.join(search_root, "**/imageclasslist.txt"), recursive=True
+    )
+    for classlist_path in sorted(candidates):
+        # classlist is at: <exdark_root>/Groundtruth/imageclasslist.txt
+        exdark_root = str(Path(classlist_path).parent.parent)
+        # Validate expected structure
+        if (
+            os.path.isdir(os.path.join(exdark_root, "Dataset"))
+            and os.path.isdir(os.path.join(exdark_root, "Groundtruth"))
+        ):
+            return exdark_root
+    return None
+
+
+def resolve_kaggle_llie_input(search_root: str = "/kaggle/input") -> str | None:
+    """Auto-detect the LLIE weights input directory inside /kaggle/input.
+
+    Looks for any of the known weight filenames uploaded to Kaggle.
+    Works whether they're in /kaggle/input/llie-model-cache/ or /kaggle/input/datasets/.
+
+    Returns the directory containing the weight files, or None.
+    """
+    import glob as _glob
+
+    known_files = [
+        "hvi_cidnet_LOL_v1.pth",
+        "retinexformer_LOL_v1.pth",
+        "lyt_net_lol.pth",
+        "pytorch_model.bin",
+        "LOL_v1.pth",
+    ]
+    for fname in known_files:
+        matches = _glob.glob(os.path.join(search_root, "**", fname), recursive=True)
+        if matches:
+            return str(Path(matches[0]).parent)
+    return None
+
+
 # ─── Weight staging ───────────────────────────────────────────────────────────
 
 def stage_kaggle_weights(

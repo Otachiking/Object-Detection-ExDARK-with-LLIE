@@ -38,10 +38,11 @@ kaggle:
   project_root: "/kaggle/working/TA-IQBAL-ObjectDetectionExDARKwithLLIE"
 
   data:
-    # Add ExDark as Kaggle Dataset (nama default: "exdark-dataset")
-    # → muncul di /kaggle/input/exdark-dataset/
-    # Ubah path di bawah jika nama dataset berbeda.
-    exdark_original: "/kaggle/input/exdark-dataset"
+    # Kaggle Dataset input path for ExDark.
+    # If added via "Add Input" (slug):  /kaggle/input/exdark-dataset
+    # If added via "Upload" button:     /kaggle/input/datasets
+    # The notebook auto-detects the real path — this is just the default hint.
+    exdark_original: "/kaggle/input/datasets"
 
   model_cache: "/kaggle/working/model_cache"
 
