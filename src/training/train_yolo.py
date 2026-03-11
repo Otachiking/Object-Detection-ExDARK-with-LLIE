@@ -9,6 +9,7 @@ Ensures:
 
 import os
 import json
+import time
 import yaml
 import torch
 from pathlib import Path
@@ -101,6 +102,7 @@ def train_yolo(
     model = YOLO(model_name)
 
     # Train with unified hyperparameters
+    _t_start = time.time()
     results = model.train(
         data=dataset_yaml,
         imgsz=yolo_cfg.get("imgsz", 640),
@@ -132,6 +134,8 @@ def train_yolo(
         val=True,
     )
 
+    _elapsed = time.time() - _t_start
+
     # Save config snapshot and environment info
     run_dir = os.path.join(project_dir, run_name_dir)
     save_config_snapshot(config, run_dir)
@@ -141,9 +145,15 @@ def train_yolo(
     best_pt = os.path.join(run_dir, "weights", "best.pt")
     last_pt = os.path.join(run_dir, "weights", "last.pt")
 
-    print(f"\n[TRAIN] ✓ Training complete: {scenario_name}")
-    print(f"  best.pt: {'✓' if os.path.exists(best_pt) else '✗'} {best_pt}")
-    print(f"  last.pt: {'✓' if os.path.exists(last_pt) else '✗'} {last_pt}")
+    _hrs, _rem = divmod(_elapsed, 3600)
+    _mins, _secs = divmod(_rem, 60)
+    print(f"\n{'='*60}")
+    print(f"[TRAIN] ✓ Training complete: {scenario_name}")
+    print(f"  Duration : {int(_hrs)}h {int(_mins)}m {_secs:.1f}s ({_elapsed/60:.1f} min total)")
+    print(f"  Epochs   : {epochs}")
+    print(f"  best.pt  : {'✓' if os.path.exists(best_pt) else '✗'} {best_pt}")
+    print(f"  last.pt  : {'✓' if os.path.exists(last_pt) else '✗'} {last_pt}")
+    print(f"{'='*60}")
 
     return {
         "scenario": scenario_name,
@@ -151,6 +161,8 @@ def train_yolo(
         "best_pt": best_pt if os.path.exists(best_pt) else None,
         "last_pt": last_pt if os.path.exists(last_pt) else None,
         "epochs_requested": epochs,
+        "elapsed_seconds": round(_elapsed, 1),
+        "elapsed_formatted": f"{int(_hrs)}h {int(_mins)}m {_secs:.1f}s",
     }
 
 

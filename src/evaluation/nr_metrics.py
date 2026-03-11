@@ -90,7 +90,7 @@ def compute_nr_metrics(
     raw_images_dir: Optional[str] = None,
     sample_size: int = 1000,
     seed: int = 42,
-    device: str = "cuda",
+    device: str = None,
     metrics: List[str] = None,
     force: bool = False,
 ) -> dict:
@@ -125,6 +125,11 @@ def compute_nr_metrics(
             if f"{col}_mean" in cached:
                 print(f"  {col.upper()}: mean={cached[f'{col}_mean']:.4f}")
         return cached
+
+    # Auto-detect device (GPU not always available, e.g. Kaggle CPU session)
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"[NR-METRICS] Device: {device}")
 
     if metrics is None:
         metrics = ["niqe", "brisque"]
