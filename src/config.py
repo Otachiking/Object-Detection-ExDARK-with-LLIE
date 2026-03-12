@@ -147,7 +147,7 @@ def load_config(
 
     if "exdark_structure" not in p:
         p["exdark_structure"] = {
-            "images": exdark_meta.get("images_dir", "Dataset/ExDark"),
+            "images": exdark_meta.get("images_dir", "Dataset"),
             "groundtruth": exdark_meta.get("groundtruth_dir", "Groundtruth"),
             "classlist": exdark_meta.get("classlist_file", "Groundtruth/imageclasslist.txt"),
         }

@@ -34,7 +34,7 @@ def evaluate_yolo(
     split: str = "test",
     conf: float = 0.001,
     iou: float = 0.7,
-    device: int = 0,
+    device=None,
     imgsz: int = 640,
     force: bool = False,
 ) -> dict:
@@ -70,7 +70,8 @@ def evaluate_yolo(
               f"mAP@0.5:0.95: {overall.get('mAP_50_95', 0):.4f}")
         return cached
 
-    device = 0 if torch.cuda.is_available() else "cpu"
+    if device is None:
+        device = 0 if torch.cuda.is_available() else "cpu"
 
     # --- Defensive: ensure dataset.yaml uses absolute path (fixes Windows path issue) ---
     patch_dataset_yaml_path(dataset_yaml)

@@ -1,117 +1,188 @@
 """
 Google Drive sync utilities for cross-platform result persistence.
 
-Allows downloading previous scenario results from a shared Google Drive
-folder so that Kaggle (or any fresh environment) can skip already-completed
-phases (data prep, training, evaluation).
+Provides two download strategies:
+
+1. **download_weights_from_gdrive()** — Downloads ONLY ``best.pt``
+   from a per-scenario Drive folder.  Accepts either a **folder URL**
+   (navigates to ``runs/weights/best.pt`` inside a temp dir) or a
+   **direct file URL** (downloads the single file).
+
+2. **restore_scenario_from_gdrive()** — Legacy: downloads an *entire*
+   shared folder.  Kept for backward compatibility but NOT recommended
+   (wastes bandwidth on enhanced images).
 
 Usage in notebook cell::
 
-    from src.utils.gdrive_sync import restore_scenario_from_gdrive
-    restore_scenario_from_gdrive(
-        gdrive_url="https://drive.google.com/drive/folders/<FOLDER_ID>",
+    from src.utils.gdrive_sync import download_weights_from_gdrive
+
+    download_weights_from_gdrive(
+        folder_url="https://drive.google.com/drive/folders/<ID>",
+        scenario_name="S1_Raw",
         output_root=OUTPUT_ROOT,
     )
-
-Weight files and evaluation outputs are downloaded into the same directory
-structure expected by the skip logic in each fase.
 """
 
 from __future__ import annotations
 
 import os
+import re
+import shutil
 import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 
 
-# ─── Download from Drive ──────────────────────────────────────────────────────
+def _ensure_gdown():
+    """Import gdown, installing it first if necessary."""
+    try:
+        import gdown
+        return gdown
+    except ImportError:
+        print("[SYNC] Installing gdown …")
+        subprocess.check_call(["pip", "install", "-q", "gdown"])
+        import gdown
+        return gdown
+
+
+def _is_file_url(url: str) -> bool:
+    """True if *url* points to a single Google Drive **file** (not a folder)."""
+    return bool(re.search(r"/file/d/|[?&]id=|/uc\?", url))
+
+
+# ─── Weights-only download (recommended) ─────────────────────────────────────
+
+def download_weights_from_gdrive(
+    folder_url: str,
+    scenario_name: str,
+    output_root: str,
+    quiet: bool = False,
+) -> dict:
+    """Download **only best.pt** from a scenario Drive folder or file link.
+
+    Accepts two kinds of URL:
+
+    * **Folder URL** – ``https://drive.google.com/drive/folders/<ID>``
+      The folder is downloaded to a temp dir; only ``best.pt`` is kept.
+    * **File URL** – ``https://drive.google.com/file/d/<ID>/view``
+      The single file is downloaded directly (~50 MB, fastest).
+
+    Args:
+        folder_url: Google Drive folder or file URL.
+        scenario_name: e.g. ``"S1_Raw"``.
+        output_root: Working directory (``/kaggle/working``).
+        quiet: Suppress progress bars.
+
+    Returns:
+        ``{"success": True/False, "path": "<best.pt path>"}``
+    """
+    gdown = _ensure_gdown()
+
+    url = folder_url.strip()
+    if not url.startswith("http"):
+        url = f"https://drive.google.com/drive/folders/{url}"
+
+    target_dir = os.path.join(
+        output_root, "scenarios", scenario_name, "runs", "weights",
+    )
+    target_path = os.path.join(target_dir, "best.pt")
+
+    if os.path.exists(target_path):
+        sz = os.path.getsize(target_path) / 1e6
+        print(f"  ✓ {scenario_name}: best.pt sudah ada ({sz:.0f} MB) → skip")
+        return {"success": True, "path": target_path}
+
+    os.makedirs(target_dir, exist_ok=True)
+
+    # ── Strategy A: direct file link → download single file ──────────
+    if _is_file_url(url):
+        print(f"  {scenario_name}: Downloading best.pt (direct link) …")
+        try:
+            out = gdown.download(url, output=target_path, quiet=quiet, fuzzy=True)
+            if out and os.path.isfile(target_path):
+                sz = os.path.getsize(target_path) / 1e6
+                print(f"  ✓ {scenario_name}: best.pt downloaded ({sz:.0f} MB)")
+                return {"success": True, "path": target_path}
+        except Exception as e:
+            print(f"  ✗ {scenario_name}: download failed — {e}")
+            return {"success": False, "error": str(e)}
+
+    # ── Strategy B: folder link → temp download, extract best.pt ─────
+    print(f"  {scenario_name}: Downloading folder to temp dir …")
+    print(f"    (hanya best.pt yang disimpan, sisanya dihapus)")
+
+    with tempfile.TemporaryDirectory(prefix="gdrive_") as tmp:
+        try:
+            gdown.download_folder(
+                url=url, output=tmp, quiet=quiet, use_cookies=False,
+                remaining_ok=True,
+            )
+        except Exception as e:
+            print(f"  ✗ {scenario_name}: folder download failed — {e}")
+            print("    → Pastikan folder di-share 'Anyone with the link'")
+            return {"success": False, "error": str(e)}
+
+        # Walk temp dir seeking best.pt
+        found = None
+        for root, _dirs, files in os.walk(tmp):
+            if "best.pt" in files:
+                found = os.path.join(root, "best.pt")
+                break
+
+        if found:
+            shutil.copy2(found, target_path)
+            sz = os.path.getsize(target_path) / 1e6
+            print(f"  ✓ {scenario_name}: best.pt restored ({sz:.0f} MB)")
+            return {"success": True, "path": target_path}
+
+        print(f"  ✗ {scenario_name}: best.pt tidak ditemukan dalam folder")
+        print("    → Pastikan folder berisi runs/weights/best.pt")
+        return {"success": False, "error": "best.pt not found"}
+
+
+# ─── Legacy: full-folder download (not recommended) ──────────────────────────
 
 def restore_scenario_from_gdrive(
     gdrive_url: str,
     output_root: str,
     quiet: bool = False,
 ) -> dict:
-    """Download previous scenario results from Google Drive via gdown.
-
-    The shared Drive folder should mirror the output directory structure::
-
-        <shared_folder>/
-            prepared/          (splits, labels, ExDark_yolo)
-            scenarios/
-                S1_Raw/        (runs/, evaluation/)
-                S2_HVI_CIDNet/
-                ...
-
-    Alternatively, share a *scenario-level* folder (e.g. ``S1_Raw/``) and set
-    ``output_root`` to ``<kaggle_working>/scenarios/S1_Raw``.
-
-    Args:
-        gdrive_url: Google Drive folder URL **or** plain folder ID.
-        output_root: Local directory to download into (e.g. ``/kaggle/working``).
-        quiet: Suppress gdown progress bars.
-
-    Returns:
-        Dict with ``success`` flag and list of restored weight files.
+    """Download an entire shared Drive folder.  **Deprecated** — prefer
+    :func:`download_weights_from_gdrive` to avoid downloading enhanced
+    images unnecessarily.
     """
-    try:
-        import gdown
-    except ImportError:
-        print("[SYNC] Installing gdown ...")
-        subprocess.check_call(["pip", "install", "-q", "gdown"])
-        import gdown
+    gdown = _ensure_gdown()
 
-    # Accept both full URL and bare folder ID
     url = gdrive_url.strip()
     if not url.startswith("http"):
         url = f"https://drive.google.com/drive/folders/{url}"
 
     os.makedirs(output_root, exist_ok=True)
 
-    print(f"[SYNC] Downloading from Google Drive …")
+    print(f"[SYNC] Downloading ENTIRE folder from Google Drive …")
     print(f"  URL    : {url}")
     print(f"  Target : {output_root}")
 
     try:
         gdown.download_folder(
-            url=url,
-            output=output_root,
-            quiet=quiet,
-            use_cookies=False,
+            url=url, output=output_root, quiet=quiet, use_cookies=False,
         )
     except Exception as e:
         print(f"[SYNC] ✗ Download failed: {e}")
-        print("  → Pastikan folder di-share sebagai 'Anyone with the link can view'")
         return {"success": False, "error": str(e)}
 
-    # ── Report what was restored ─────────────────────────────────────────
     restored: dict = {"success": True, "files": []}
-
     scenarios = ["S1_Raw", "S2_HVI_CIDNet", "S3_RetinexFormer", "S4_LYT_Net"]
     for sc in scenarios:
         best_pt = os.path.join(output_root, "scenarios", sc, "runs", "weights", "best.pt")
-        eval_dir = os.path.join(output_root, "scenarios", sc, "evaluation")
         if os.path.exists(best_pt):
             restored["files"].append(best_pt)
-            print(f"  ✓ {sc}: best.pt found → training akan ter-skip")
-        if os.path.isdir(eval_dir) and os.listdir(eval_dir):
-            n = len(os.listdir(eval_dir))
-            print(f"  ✓ {sc}: evaluation/ ({n} files)")
+            print(f"  ✓ {sc}: best.pt found")
 
-    prepared = os.path.join(output_root, "prepared")
-    if os.path.isdir(prepared) and os.listdir(prepared):
-        print(f"  ✓ prepared/ ditemukan → data preparation akan ter-skip")
-
-    # Also check if best.pt is directly in output_root (scenario-level share)
     direct_best = os.path.join(output_root, "runs", "weights", "best.pt")
     if os.path.exists(direct_best):
         restored["files"].append(direct_best)
-        print(f"  ✓ best.pt found at root level → training akan ter-skip")
-
-    if not restored["files"]:
-        print("[SYNC] ⚠ Tidak ditemukan best.pt setelah download")
-        print("  → Pastikan folder yang di-share berisi struktur output yang benar")
-
     return restored
 
 
