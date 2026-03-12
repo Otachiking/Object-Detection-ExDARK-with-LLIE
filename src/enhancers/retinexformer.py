@@ -6,7 +6,6 @@ Repo: https://github.com/caiyuanhao1998/Retinexformer
 """
 
 import os
-import sys
 import cv2
 import torch
 import numpy as np
@@ -73,26 +72,40 @@ class RetinexFormerEnhancer(BaseEnhancer):
         self._clone_repo()
         self.weight_path = self._download_weights()
 
-        # Add repo to path
-        if self.repo_dir not in sys.path:
-            sys.path.insert(0, self.repo_dir)
+        # Load architecture directly from the cloned repo file.
+        # We CANNOT rely on sys.path + `import basicsr.models.archs...` because
+        # the pip-installed `basicsr` (dependency of pyiqa) shadows the repo's
+        # local `basicsr/` package.  importlib bypasses this entirely.
+        import importlib.util
 
-        # RetinexFormer uses basicsr framework
-        # Import the model architecture
-        try:
-            from basicsr.models.archs.Retinexformer_arch import Retinexformer
-        except ImportError:
-            try:
-                # Alternative import path
-                from basicsr.archs.Retinexformer_arch import Retinexformer
-            except ImportError as e:
-                raise ImportError(
-                    f"Failed to import Retinexformer architecture. "
-                    f"Check {self.repo_dir} structure. Error: {e}"
-                )
+        arch_file = None
+        candidates = [
+            os.path.join(self.repo_dir, "basicsr", "models", "archs", "RetinexFormer_arch.py"),
+            os.path.join(self.repo_dir, "basicsr", "models", "archs", "Retinexformer_arch.py"),
+            os.path.join(self.repo_dir, "basicsr", "archs", "RetinexFormer_arch.py"),
+        ]
+        for c in candidates:
+            if os.path.isfile(c):
+                arch_file = c
+                break
+
+        if arch_file is None:
+            raise FileNotFoundError(
+                f"RetinexFormer_arch.py not found in repo.\n"
+                f"  Searched: {candidates}\n"
+                f"  Repo dir: {self.repo_dir}"
+            )
+
+        spec = importlib.util.spec_from_file_location("RetinexFormer_arch", arch_file)
+        mod  = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        RetinexFormer = getattr(mod, "RetinexFormer", None) or getattr(mod, "Retinexformer", None)
+        if RetinexFormer is None:
+            raise ImportError(f"Class 'RetinexFormer' not found in {arch_file}")
 
         # Initialize model with default config for LOL
-        self.model = Retinexformer(
+        self.model = RetinexFormer(
             in_channels=3,
             out_channels=3,
             n_feat=40,
