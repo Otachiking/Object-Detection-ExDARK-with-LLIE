@@ -10,9 +10,13 @@ LYT-Net is extremely lightweight: ~45K params, 3.49 GFLOPs.
 
 import os
 import sys
+import shutil
+import subprocess
 import cv2
 import torch
 import numpy as np
+import importlib
+import importlib.util
 from typing import Optional
 
 from src.enhancers.base import BaseEnhancer
@@ -29,16 +33,44 @@ class LYTNetEnhancer(BaseEnhancer):
 
     def _clone_repo(self) -> None:
         """Clone LYT-Net repo if not exists."""
-        if os.path.exists(os.path.join(self.repo_dir, "model")) or \
-           os.path.exists(os.path.join(self.repo_dir, "models")):
+        model_marker = os.path.join(self.repo_dir, "PyTorch", "model.py")
+
+        # Upstream repo stores PyTorch code under repo/PyTorch/model.py
+        if (
+            os.path.isdir(self.repo_dir)
+            and (
+                os.path.isfile(model_marker)
+                or os.path.isfile(os.path.join(self.repo_dir, "model.py"))
+                or os.path.exists(os.path.join(self.repo_dir, "models"))
+            )
+        ):
             print(f"[LYT-Net] Repo already exists: {self.repo_dir}")
             return
 
+        # If a partial/corrupted repo directory exists, remove it before cloning.
+        # This avoids `git clone` failures on non-empty destination paths.
+        if os.path.isdir(self.repo_dir):
+            print(f"[LYT-Net] Found incomplete repo cache, removing: {self.repo_dir}")
+            shutil.rmtree(self.repo_dir, ignore_errors=True)
+
         os.makedirs(self.cache_dir, exist_ok=True)
         print("[LYT-Net] Cloning repository...")
-        ret = os.system(f"git clone https://github.com/albrateanu/LYT-Net.git {self.repo_dir}")
-        if ret != 0:
-            raise RuntimeError("Failed to clone LYT-Net repository")
+
+        proc = subprocess.run(
+            ["git", "clone", "https://github.com/albrateanu/LYT-Net.git", self.repo_dir],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            stderr = (proc.stderr or "").strip()
+            stdout = (proc.stdout or "").strip()
+            raise RuntimeError(
+                "Failed to clone LYT-Net repository. "
+                f"Return code: {proc.returncode}. "
+                f"STDERR: {stderr or '<empty>'}. "
+                f"STDOUT: {stdout or '<empty>'}"
+            )
         print("[LYT-Net] Repository cloned successfully")
 
     def _download_weights(self) -> str:
@@ -75,9 +107,15 @@ class LYTNetEnhancer(BaseEnhancer):
         self._clone_repo()
         self.weight_path = self._download_weights()
 
-        # Add repo to path
-        if self.repo_dir not in sys.path:
-            sys.path.insert(0, self.repo_dir)
+        # Add repo and common subfolders to path
+        candidate_paths = [
+            self.repo_dir,
+            os.path.join(self.repo_dir, "PyTorch"),
+            os.path.join(self.repo_dir, "pytorch"),
+        ]
+        for p in candidate_paths:
+            if os.path.isdir(p) and p not in sys.path:
+                sys.path.insert(0, p)
 
         # Import model architecture
         # LYT-Net PyTorch port structure may vary — try multiple import paths
@@ -85,28 +123,53 @@ class LYTNetEnhancer(BaseEnhancer):
         import_errors = []
 
         # Try different import patterns based on repo structure
-        for try_import in [
-            lambda: __import__("model", fromlist=["LYTNet"]),
-            lambda: __import__("models", fromlist=["LYTNet"]),
-            lambda: __import__("models.LYTNet", fromlist=["LYTNet"]),
-            lambda: __import__("pytorch.model", fromlist=["LYTNet"]),
+        for module_name in [
+            "model",
+            "PyTorch.model",
+            "pytorch.model",
+            "models",
+            "models.LYTNet",
         ]:
             try:
-                mod = try_import()
-                if hasattr(mod, "LYTNet"):
-                    model = mod.LYTNet()
-                    break
-                elif hasattr(mod, "LYT_Net"):
-                    model = mod.LYT_Net()
+                mod = importlib.import_module(module_name)
+                for class_name in ("LYT", "LYTNet", "LYT_Net"):
+                    if hasattr(mod, class_name):
+                        model = getattr(mod, class_name)()
+                        break
+                if model is not None:
                     break
             except Exception as e:
-                import_errors.append(str(e))
+                import_errors.append(f"{module_name}: {e}")
                 continue
 
         if model is None:
-            # Fallback: try to find and load model definition dynamically
+            # Fallback: load directly from model.py path
+            direct_model_paths = [
+                os.path.join(self.repo_dir, "PyTorch", "model.py"),
+                os.path.join(self.repo_dir, "pytorch", "model.py"),
+                os.path.join(self.repo_dir, "model.py"),
+            ]
+            for model_py in direct_model_paths:
+                if not os.path.isfile(model_py):
+                    continue
+                try:
+                    spec = importlib.util.spec_from_file_location("lyt_model_module", model_py)
+                    if spec is None or spec.loader is None:
+                        continue
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    for class_name in ("LYT", "LYTNet", "LYT_Net"):
+                        if hasattr(mod, class_name):
+                            model = getattr(mod, class_name)()
+                            break
+                    if model is not None:
+                        break
+                except Exception as e:
+                    import_errors.append(f"direct:{model_py}: {e}")
+
+        if model is None:
             import glob
-            py_files = glob.glob(os.path.join(self.repo_dir, "**/*.py"), recursive=True)
+            py_files = glob.glob(os.path.join(self.repo_dir, "**", "*.py"), recursive=True)
             model_files = [f for f in py_files if "model" in os.path.basename(f).lower()]
             raise ImportError(
                 f"Failed to import LYT-Net model. "
