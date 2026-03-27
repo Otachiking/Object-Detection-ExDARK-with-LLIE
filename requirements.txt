@@ -2,7 +2,7 @@
 # Install: pip install -r requirements.txt
 
 # === Core ML ===
-ultralytics>=8.3.0
+ultralytics>=8.3.0,<8.4.0
 torch>=2.0.0
 torchvision>=0.15.0
 

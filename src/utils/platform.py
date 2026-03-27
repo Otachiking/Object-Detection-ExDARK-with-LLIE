@@ -192,21 +192,35 @@ def stage_kaggle_weights(
 # ─── Enhanced dataset: Kaggle input check ────────────────────────────────────
 
 def get_kaggle_enhanced_input(enhancer_name: str) -> str | None:
-    """Return path to pre-uploaded Kaggle enhanced dataset, or None if not available.
+    """Return Kaggle input root that contains enhanced/images, or None.
 
-    The expected slug for the Kaggle Dataset is:
-        exdark-enhanced-{enhancer_name_slug}
-    e.g.:  exdark-enhanced-hvi-cidnet
-           exdark-enhanced-retinexformer
-           exdark-enhanced-lyt-net
+    Supports both naming/layout patterns:
+    1) exdark-enhanced-{slug}/images/...            (older flow)
+    2) exdark-{slug}/enhanced/images/...            (current uploaded ZIP flow)
 
-    If that dataset is added as an Input in the Kaggle notebook, its images/
-    folder will be at /kaggle/input/exdark-enhanced-{slug}/images/
+    Returns the directory that directly contains images/, so downstream setup
+    can always use <returned>/images/{train,val,test}.
     """
-    slug       = enhancer_name.lower().replace("_", "-")
-    input_path = Path(f"/kaggle/input/exdark-enhanced-{slug}")
-    if input_path.exists() and (input_path / "images").is_dir():
-        return str(input_path)
+    slug = enhancer_name.lower().replace("_", "-")
+    candidate_slugs = [
+        f"exdark-{slug}",
+        f"exdark-enhanced-{slug}",
+    ]
+
+    for ds_slug in candidate_slugs:
+        dataset_root = Path("/kaggle/input") / ds_slug
+        if not dataset_root.exists():
+            continue
+
+        # New uploads: /kaggle/input/<slug>/enhanced/images
+        enhanced_root = dataset_root / "enhanced"
+        if (enhanced_root / "images").is_dir():
+            return str(enhanced_root)
+
+        # Older uploads: /kaggle/input/<slug>/images
+        if (dataset_root / "images").is_dir():
+            return str(dataset_root)
+
     return None
 
 
@@ -218,17 +232,21 @@ def setup_enhanced_from_kaggle(
     """Symlink pre-enhanced images + regenerate dataset.yaml so training can proceed.
 
     If a pre-uploaded Kaggle Dataset with enhanced images is available, creates
-    symlinks from the writable enhanced_dir to the read-only Kaggle input, then
-    generates dataset.yaml pointing to those paths.
+    symlinks from the writable enhanced_dir to the read-only Kaggle input.
+
+    Important behavior: labels are NOT taken from Kaggle enhanced dataset.
+    Labels are always linked from the original YOLO dataset (yolo_dir), same as
+    the previous/local pipeline behavior.
 
     Returns True if setup succeeded (enhancement step can be skipped).
     """
     from src.data.build_yolo_dataset import generate_enhanced_dataset_yaml
 
-    kaggle_path  = Path(kaggle_input_path)
+    kaggle_path = Path(kaggle_input_path)
     enhanced_path = Path(enhanced_dir)
 
     try:
+        # Link only enhanced images from Kaggle input.
         for split in ["train", "val", "test"]:
             src_images = kaggle_path / "images" / split
             dst_images = enhanced_path / "images" / split
@@ -240,7 +258,8 @@ def setup_enhanced_from_kaggle(
             dst_images.parent.mkdir(parents=True, exist_ok=True)
             os.symlink(str(src_images), str(dst_images))
 
-        # Use labels from original YOLO dir (same as enhance_dataset does)
+        # Always use labels from original YOLO dir (same as enhance_dataset does).
+        # This intentionally ignores any labels bundled in Kaggle enhanced dataset.
         for split in ["train", "val", "test"]:
             src_labels = Path(yolo_dir) / "labels" / split
             dst_labels = enhanced_path / "labels" / split
@@ -256,6 +275,7 @@ def setup_enhanced_from_kaggle(
             output_yaml_path=output_yaml,
         )
         print(f"  [OK] Enhanced images symlinked from: {kaggle_input_path}")
+        print("  [OK] Labels linked from original YOLO dataset")
         return True
 
     except Exception as exc:

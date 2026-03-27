@@ -105,7 +105,7 @@ print(f"Drive root: {{DRIVE_ROOT}}")
 
 INSTALL_CELL = """\
 #@title 0.2 · Install Dependencies
-!pip install -q ultralytics pyiqa thop fvcore scipy pandas pyyaml seaborn tqdm gdown huggingface_hub
+!pip install -q 'ultralytics>=8.3.0,<8.4.0' pyiqa thop fvcore scipy pandas pyyaml seaborn tqdm gdown huggingface_hub
 
 import torch
 print(f"PyTorch  : {torch.__version__}")
@@ -295,10 +295,10 @@ raw_dir_for_loe = raw_test_dir if (enhancer_name and enhancer_name.lower() != "n
 
 nr = compute_nr_metrics(images_dir=test_dir, output_dir=nr_dir,
                          scenario_name=SCENARIO_NAME, raw_images_dir=raw_dir_for_loe)
-print(f"\\nNR-IQA — {SCENARIO_NAME}")
-print(f"  NIQE (↓)    : {nr.get('niqe_mean','N/A')}")
-print(f"  BRISQUE (↓) : {nr.get('brisque_mean','N/A')}")
-print(f"  LOE (↓)     : {nr.get('loe_mean','N/A')}")
+print(f"\\nNR-IQA (lower is better) — {SCENARIO_NAME}")
+print(f"  NIQE    : {nr.get('niqe_mean','N/A')}")
+print(f"  BRISQUE : {nr.get('brisque_mean','N/A')}")
+print(f"  LOE     : {nr.get('loe_mean','N/A')}")
 """
 
 FASE6_CELL = """\
