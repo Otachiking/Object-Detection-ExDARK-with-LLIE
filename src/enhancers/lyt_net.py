@@ -12,6 +12,8 @@ import os
 import sys
 import shutil
 import subprocess
+import zipfile
+import tempfile
 import cv2
 import torch
 import numpy as np
@@ -99,6 +101,53 @@ class LYTNetEnhancer(BaseEnhancer):
 
         return weight_file
 
+    def _load_checkpoint_robust(self, weight_path: str):
+        """Load checkpoint with fallback for malformed/packaged archives.
+
+        Some shared LYT-Net weight files are distributed as zip containers that include
+        an inner *.pth file (e.g., best_model_LOLv1.pth). torch.load() on the outer file
+        can fail with 'file in archive is not in a subdirectory'.
+        """
+        try:
+            return torch.load(weight_path, map_location=self.device, weights_only=False)
+        except RuntimeError as e:
+            msg = str(e)
+            if "file in archive is not in a subdirectory" not in msg:
+                raise
+
+            if not zipfile.is_zipfile(weight_path):
+                raise
+
+            with zipfile.ZipFile(weight_path, "r") as zf:
+                members = zf.namelist()
+                candidates = [
+                    m for m in members
+                    if m.lower().endswith((".pth", ".pt", ".ckpt")) and not m.endswith("/")
+                ]
+                if not candidates:
+                    raise RuntimeError(
+                        f"Weights archive detected but no .pth/.pt/.ckpt inside: {weight_path}"
+                    )
+
+                # Prefer best_model* when available, otherwise first candidate.
+                candidates.sort(key=lambda x: (0 if "best_model" in x.lower() else 1, len(x)))
+                inner_member = candidates[0]
+                print(f"[LYT-Net] Loading inner checkpoint from archive: {inner_member}")
+
+                with zf.open(inner_member, "r") as fin, tempfile.NamedTemporaryFile(
+                    suffix=".pth", delete=False
+                ) as tmp:
+                    tmp.write(fin.read())
+                    tmp_path = tmp.name
+
+            try:
+                return torch.load(tmp_path, map_location=self.device, weights_only=False)
+            finally:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+
     def load_model(self, device: str = None) -> None:
         """Load LYT-Net PyTorch model."""
         from src.enhancers.base import _auto_device
@@ -178,7 +227,7 @@ class LYTNetEnhancer(BaseEnhancer):
             )
 
         # Load weights
-        checkpoint = torch.load(self.weight_path, map_location=self.device, weights_only=False)
+        checkpoint = self._load_checkpoint_robust(self.weight_path)
         if isinstance(checkpoint, dict):
             if "state_dict" in checkpoint:
                 model.load_state_dict(checkpoint["state_dict"])

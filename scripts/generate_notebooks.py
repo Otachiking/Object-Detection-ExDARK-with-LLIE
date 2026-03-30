@@ -127,6 +127,9 @@ from src.seed import set_global_seed
 cfg = load_config(SCENARIO_KEY, quick_test=QUICK_TEST)
 set_global_seed(cfg["seed"])
 
+# Global toggle reused by Detection / NR-IQA / Latency cells.
+FORCE_EVALUATION = False  # @param {type:"boolean"}
+
 paths      = cfg.get("paths", {})
 data_paths = paths.get("data", {})
 
@@ -200,6 +203,27 @@ print("[SKIP] S1_Raw uses raw images. No LLIE enhancement needed.")
 enhancer_name = None
 enhanced_dir  = None
 """
+    if scenario_key == "s4_lyt_net":
+        return """\
+#@title Fase 2 · Pre-enhanced Dataset Setup (required)
+enhancer_name = cfg.get("scenario", {}).get("enhancer", None)
+assert enhancer_name and enhancer_name.lower() != "none", \
+    "No enhancer configured for this scenario!"
+
+enhanced_dir = os.path.join(OUTPUT_ROOT, f"ExDark_enhanced_{enhancer_name}")
+
+print(f"Enhancer  : {enhancer_name}")
+print(f"Expected enhanced dataset dir : {enhanced_dir}")
+
+dataset_yaml_enh = os.path.join(enhanced_dir, "dataset.yaml")
+if not os.path.isfile(dataset_yaml_enh):
+    raise FileNotFoundError(
+        "Pre-enhanced dataset belum ditemukan.\\n"
+        "Jalankan notebook builder .h5 dulu untuk membuat dataset enhanced S4."
+    )
+
+print(f"Using pre-enhanced dataset: {dataset_yaml_enh}")
+"""
     return """\
 #@title Fase 2 · Enhancement  (auto-skip if already done)
 import torch
@@ -262,7 +286,8 @@ weights_path = get_best_weights(run_dir)
 eval_dir     = os.path.join(OUTPUT_ROOT, "evaluation", SCENARIO_NAME)
 
 results  = evaluate_yolo(weights_path=weights_path, dataset_yaml=data_yaml,
-                         output_dir=eval_dir, scenario_name=SCENARIO_NAME)
+                         output_dir=eval_dir, scenario_name=SCENARIO_NAME,
+                         force=FORCE_EVALUATION)
 overall  = results.get("overall", {})
 
 print(f"\\n{'='*50}")
@@ -294,7 +319,8 @@ nr_dir = os.path.join(OUTPUT_ROOT, "evaluation", SCENARIO_NAME, "nr_metrics")
 raw_dir_for_loe = raw_test_dir if (enhancer_name and enhancer_name.lower() != "none") else None
 
 nr = compute_nr_metrics(images_dir=test_dir, output_dir=nr_dir,
-                         scenario_name=SCENARIO_NAME, raw_images_dir=raw_dir_for_loe)
+                         scenario_name=SCENARIO_NAME, raw_images_dir=raw_dir_for_loe,
+                         force=FORCE_EVALUATION)
 print(f"\\nNR-IQA (lower is better) — {SCENARIO_NAME}")
 print(f"  NIQE    : {nr.get('niqe_mean','N/A')}")
 print(f"  BRISQUE : {nr.get('brisque_mean','N/A')}")
@@ -405,14 +431,14 @@ def build_scenario_notebook(key: str, name: str):
         md("---\n## Fase 2: Image Enhancement", "md-f2"),
         code(fase2_cell_for(key), "cell-f2"),
 
+        md("---\n## Fase 5: Image Quality Metrics", "md-f5"),
+        code(FASE5_CELL, "cell-f5"),
+
         md("---\n## Fase 3: Training", "md-f3"),
         code(FASE3_CELL, "cell-f3"),
 
         md("---\n## Fase 4: Detection Evaluation", "md-f4"),
         code(FASE4_CELL, "cell-f4"),
-
-        md("---\n## Fase 5: Image Quality Metrics", "md-f5"),
-        code(FASE5_CELL, "cell-f5"),
 
         md("---\n## Fase 6: Latency & FLOPs", "md-f6"),
         code(FASE6_CELL, "cell-f6"),
