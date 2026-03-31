@@ -5,6 +5,9 @@ Uses the PyTorch pretrained weights (LOL-v1 trained).
 Repo: https://github.com/albrateanu/LYT-Net
 Weights: PyTorch .pth from Google Drive
 
+Weights are loaded from the local `llie-weights/` folder in the GitHub repo.
+Falls back to model_cache if available, then to gdown download as last resort.
+
 LYT-Net is extremely lightweight: ~45K params, 3.49 GFLOPs.
 """
 
@@ -26,6 +29,10 @@ from src.enhancers.base import BaseEnhancer
 
 class LYTNetEnhancer(BaseEnhancer):
     """LYT-Net Low-Light Image Enhancement wrapper (PyTorch)."""
+
+    # Weight file name in llie-weights/ folder
+    WEIGHT_FILENAME = "lyt_net_lol.pth"
+    CACHE_WEIGHT_FILENAME = "lyt_net_lol.pth"
 
     def __init__(self, cache_dir: str = "cache/LYT-Net"):
         super().__init__(name="LYT-Net")
@@ -50,7 +57,6 @@ class LYTNetEnhancer(BaseEnhancer):
             return
 
         # If a partial/corrupted repo directory exists, remove it before cloning.
-        # This avoids `git clone` failures on non-empty destination paths.
         if os.path.isdir(self.repo_dir):
             print(f"[LYT-Net] Found incomplete repo cache, removing: {self.repo_dir}")
             shutil.rmtree(self.repo_dir, ignore_errors=True)
@@ -75,31 +81,64 @@ class LYTNetEnhancer(BaseEnhancer):
             )
         print("[LYT-Net] Repository cloned successfully")
 
-    def _download_weights(self) -> str:
-        """Download PyTorch weights."""
+    def _resolve_weights(self) -> str:
+        """Resolve weight file path with priority:
+        1. model_cache (already staged, e.g. from Kaggle weight staging)
+        2. llie-weights/ in the GitHub repo (committed to repo)
+        3. gdown download from Google Drive (last resort)
+        """
         weights_dir = os.path.join(self.cache_dir, "weights")
-        weight_file = os.path.join(weights_dir, "lyt_net_lol.pth")
+        cache_weight = os.path.join(weights_dir, self.CACHE_WEIGHT_FILENAME)
 
-        if os.path.exists(weight_file):
-            print(f"[LYT-Net] Weights already exist: {weight_file}")
-            return weight_file
+        # Priority 1: model_cache (staged weights)
+        if os.path.exists(cache_weight):
+            print(f"[LYT-Net] Weights found in cache: {cache_weight}")
+            return cache_weight
 
+        # Priority 2: llie-weights/ in repo root
+        repo_weight = self._find_repo_weight()
+        if repo_weight:
+            print(f"[LYT-Net] Weights found in repo: {repo_weight}")
+            # Copy to cache for consistent path usage
+            os.makedirs(weights_dir, exist_ok=True)
+            shutil.copy2(repo_weight, cache_weight)
+            print(f"[LYT-Net] Copied to cache: {cache_weight}")
+            return cache_weight
+
+        # Priority 3: gdown download (last resort)
+        print("[LYT-Net] Weights not found locally. Attempting gdown download...")
         os.makedirs(weights_dir, exist_ok=True)
-        print("[LYT-Net] Downloading PyTorch weights...")
 
         try:
             import gdown
-            # PyTorch weights file ID
             url = "https://drive.google.com/uc?id=1GeEkasO2ubFi847pzrxfQ1fB3Y9NuhZ1"
-            gdown.download(url, weight_file, quiet=False)
-            print(f"[LYT-Net] Weights downloaded: {weight_file}")
+            gdown.download(url, cache_weight, quiet=False)
+            if os.path.exists(cache_weight):
+                print(f"[LYT-Net] Weights downloaded: {cache_weight}")
+                return cache_weight
         except Exception as e:
-            print(f"[LYT-Net] Auto-download failed: {e}")
-            print(f"  Download manually from: https://drive.google.com/file/d/1GeEkasO2ubFi847pzrxfQ1fB3Y9NuhZ1")
-            print(f"  Save to: {weight_file}")
-            raise FileNotFoundError(f"Weights not found: {weight_file}")
+            print(f"[LYT-Net] gdown download failed: {e}")
 
-        return weight_file
+        raise FileNotFoundError(
+            f"LYT-Net weights not found.\n"
+            f"  Checked:\n"
+            f"    1. Cache: {cache_weight}\n"
+            f"    2. Repo llie-weights/: {self.WEIGHT_FILENAME}\n"
+            f"    3. gdown download: failed\n"
+            f"  Solution: place '{self.WEIGHT_FILENAME}' in llie-weights/ folder."
+        )
+
+    def _find_repo_weight(self) -> Optional[str]:
+        """Search for weight file in llie-weights/ directory of the repo."""
+        search_bases = [
+            os.getcwd(),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        ]
+        for base in search_bases:
+            candidate = os.path.join(base, "llie-weights", self.WEIGHT_FILENAME)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
 
     def _load_checkpoint_robust(self, weight_path: str):
         """Load checkpoint with fallback for malformed/packaged archives.
@@ -154,7 +193,7 @@ class LYTNetEnhancer(BaseEnhancer):
         self.device = _auto_device(device)
 
         self._clone_repo()
-        self.weight_path = self._download_weights()
+        self.weight_path = self._resolve_weights()
 
         # Add repo and common subfolders to path
         candidate_paths = [

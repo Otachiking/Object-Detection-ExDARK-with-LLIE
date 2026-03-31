@@ -5,7 +5,8 @@ Uses the LOL-v1 pretrained weights (with perceptual loss).
 Repo: https://github.com/Fediory/HVI-CIDNet
 Weights: https://huggingface.co/Fediory/HVI-CIDNet-LOLv1-wperc
 
-Model is fully convolutional — works at any resolution.
+Weights are loaded from the local `llie-weights/` folder in the GitHub repo.
+Falls back to model_cache if available, then to HuggingFace download as last resort.
 """
 
 import os
@@ -21,6 +22,10 @@ from src.enhancers.base import BaseEnhancer
 
 class HVICIDNetEnhancer(BaseEnhancer):
     """HVI-CIDNet Low-Light Image Enhancement wrapper."""
+
+    # Weight file name in llie-weights/ folder
+    WEIGHT_FILENAME = "hvi_cidnet_LOL_v1.pth"
+    CACHE_WEIGHT_FILENAME = "pytorch_model.bin"
 
     def __init__(self, cache_dir: str = "cache/HVI-CIDNet"):
         super().__init__(name="HVI-CIDNet")
@@ -41,23 +46,34 @@ class HVICIDNetEnhancer(BaseEnhancer):
             raise RuntimeError("Failed to clone HVI-CIDNet repository")
         print("[HVI-CIDNet] Repository cloned successfully")
 
-    def _download_weights(self) -> str:
-        """Download LOL-v1 (with perceptual loss) weights from HuggingFace.
-
-        The HF repo Fediory/HVI-CIDNet-LOLv1-wperc contains:
-          - pytorch_model.bin  (state_dict)
-          - model.safetensors  (safetensors format)
-        We prefer pytorch_model.bin for widest compatibility.
+    def _resolve_weights(self) -> str:
+        """Resolve weight file path with priority:
+        1. model_cache (already staged, e.g. from Kaggle weight staging)
+        2. llie-weights/ in the GitHub repo (committed to repo)
+        3. HuggingFace download (last resort)
         """
         weights_dir = os.path.join(self.cache_dir, "weights")
-        weight_file = os.path.join(weights_dir, "pytorch_model.bin")
+        cache_weight = os.path.join(weights_dir, self.CACHE_WEIGHT_FILENAME)
 
-        if os.path.exists(weight_file):
-            print(f"[HVI-CIDNet] Weights already exist: {weight_file}")
-            return weight_file
+        # Priority 1: model_cache (staged weights)
+        if os.path.exists(cache_weight):
+            print(f"[HVI-CIDNet] Weights found in cache: {cache_weight}")
+            return cache_weight
 
+        # Priority 2: llie-weights/ in repo root
+        repo_weight = self._find_repo_weight()
+        if repo_weight:
+            print(f"[HVI-CIDNet] Weights found in repo: {repo_weight}")
+            # Copy to cache with expected filename
+            os.makedirs(weights_dir, exist_ok=True)
+            import shutil
+            shutil.copy2(repo_weight, cache_weight)
+            print(f"[HVI-CIDNet] Copied to cache as: {cache_weight}")
+            return cache_weight
+
+        # Priority 3: HuggingFace download (last resort)
+        print("[HVI-CIDNet] Weights not found locally. Attempting HuggingFace download...")
         os.makedirs(weights_dir, exist_ok=True)
-        print("[HVI-CIDNet] Downloading LOL-v1 (wperc) weights from HuggingFace...")
 
         try:
             from huggingface_hub import hf_hub_download
@@ -66,20 +82,45 @@ class HVICIDNetEnhancer(BaseEnhancer):
                 filename="pytorch_model.bin",
                 local_dir=weights_dir,
             )
-            # hf_hub_download may place it in a subfolder; ensure it's at expected path
-            if not os.path.exists(weight_file) and os.path.exists(downloaded):
+            if not os.path.exists(cache_weight) and os.path.exists(downloaded):
                 import shutil
-                shutil.move(downloaded, weight_file)
-            print(f"[HVI-CIDNet] Weights downloaded: {weight_file}")
-            return weight_file
+                shutil.move(downloaded, cache_weight)
+            print(f"[HVI-CIDNet] Weights downloaded: {cache_weight}")
+            return cache_weight
         except ImportError:
             # Fallback: direct URL download
-            url = "https://huggingface.co/Fediory/HVI-CIDNet-LOLv1-wperc/resolve/main/pytorch_model.bin"
-            import urllib.request
-            print(f"[HVI-CIDNet] Downloading from: {url}")
-            urllib.request.urlretrieve(url, weight_file)
-            print(f"[HVI-CIDNet] Weights saved: {weight_file}")
-            return weight_file
+            try:
+                url = "https://huggingface.co/Fediory/HVI-CIDNet-LOLv1-wperc/resolve/main/pytorch_model.bin"
+                import urllib.request
+                print(f"[HVI-CIDNet] Downloading from: {url}")
+                urllib.request.urlretrieve(url, cache_weight)
+                print(f"[HVI-CIDNet] Weights saved: {cache_weight}")
+                return cache_weight
+            except Exception as e:
+                print(f"[HVI-CIDNet] URL download failed: {e}")
+        except Exception as e:
+            print(f"[HVI-CIDNet] HuggingFace download failed: {e}")
+
+        raise FileNotFoundError(
+            f"HVI-CIDNet weights not found.\n"
+            f"  Checked:\n"
+            f"    1. Cache: {cache_weight}\n"
+            f"    2. Repo llie-weights/: {self.WEIGHT_FILENAME}\n"
+            f"    3. HuggingFace download: failed\n"
+            f"  Solution: place '{self.WEIGHT_FILENAME}' in llie-weights/ folder."
+        )
+
+    def _find_repo_weight(self) -> Optional[str]:
+        """Search for weight file in llie-weights/ directory of the repo."""
+        search_bases = [
+            os.getcwd(),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        ]
+        for base in search_bases:
+            candidate = os.path.join(base, "llie-weights", self.WEIGHT_FILENAME)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
 
     def load_model(self, device: str = None) -> None:
         """Load HVI-CIDNet model with LOL-v1 (wperc) weights.
@@ -90,9 +131,9 @@ class HVICIDNetEnhancer(BaseEnhancer):
         from src.enhancers.base import _auto_device
         self.device = _auto_device(device)
 
-        # Clone repo and download weights
+        # Clone repo and resolve weights
         self._clone_repo()
-        self.weight_path = self._download_weights()
+        self.weight_path = self._resolve_weights()
 
         # Add repo to Python path so we can import its modules
         if self.repo_dir not in sys.path:

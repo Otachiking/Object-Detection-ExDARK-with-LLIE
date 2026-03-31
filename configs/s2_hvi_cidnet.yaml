@@ -9,9 +9,9 @@ scenario:
 
 enhancer_config:
   repo_url: "https://github.com/Fediory/HVI-CIDNet.git"
-  weight_source: "huggingface"
+  weight_source: "llie-weights"    # Priority: llie-weights/ (repo) > cache > huggingface
   weight_repo: "Fediory/HVI-CIDNet-LOLv1-wperc"
-  weight_file: "pytorch_model.bin"
+  weight_file: "hvi_cidnet_LOL_v1.pth"
   # Inference parameters (tunable)
   alpha_s: 1.0
   alpha_i: 1.0

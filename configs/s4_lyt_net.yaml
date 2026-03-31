@@ -9,7 +9,7 @@ scenario:
 
 enhancer_config:
   repo_url: "https://github.com/albrateanu/LYT-Net.git"
-  weight_source: "google_drive"
+  weight_source: "llie-weights"    # Priority: llie-weights/ (repo) > cache > gdown
   weight_file: "lyt_net_lol.pth"
   # LYT-Net config
   arch: "LYTNet"

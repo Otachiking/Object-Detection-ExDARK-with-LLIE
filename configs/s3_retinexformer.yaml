@@ -9,7 +9,7 @@ scenario:
 
 enhancer_config:
   repo_url: "https://github.com/caiyuanhao1998/Retinexformer.git"
-  weight_source: "google_drive"
-  weight_file: "LOL_v1.pth"
+  weight_source: "llie-weights"    # Priority: llie-weights/ (repo) > cache > gdown
+  weight_file: "retinexformer_LOL_v1.pth"
   # RetinexFormer config
   arch: "Retinexformer"

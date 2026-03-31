@@ -3,6 +3,9 @@ RetinexFormer enhancer wrapper.
 
 Uses LOL_v1.pth pretrained weights (validated on ExDark by the original authors).
 Repo: https://github.com/caiyuanhao1998/Retinexformer
+
+Weights are loaded from the local `llie-weights/` folder in the GitHub repo.
+Falls back to model_cache if available, then to gdown download as last resort.
 """
 
 import os
@@ -16,6 +19,10 @@ from src.enhancers.base import BaseEnhancer
 
 class RetinexFormerEnhancer(BaseEnhancer):
     """RetinexFormer Low-Light Image Enhancement wrapper."""
+
+    # Weight file name expected by this enhancer
+    WEIGHT_FILENAME = "retinexformer_LOL_v1.pth"
+    CACHE_WEIGHT_FILENAME = "LOL_v1.pth"
 
     def __init__(self, cache_dir: str = "cache/Retinexformer"):
         super().__init__(name="RetinexFormer")
@@ -36,33 +43,98 @@ class RetinexFormerEnhancer(BaseEnhancer):
             raise RuntimeError("Failed to clone RetinexFormer repository")
         print("[RetinexFormer] Repository cloned successfully")
 
-    def _download_weights(self) -> str:
-        """Download LOL_v1 weights."""
+    def _resolve_weights(self) -> str:
+        """Resolve weight file path with priority:
+        1. model_cache (already staged, e.g. from Kaggle weight staging)
+        2. Kaggle input dataset (manual upload)
+        3. llie-weights/ in the GitHub repo (committed to repo)
+        4. gdown download from Google Drive (last resort)
+        """
         weights_dir = os.path.join(self.cache_dir, "weights")
-        weight_file = os.path.join(weights_dir, "LOL_v1.pth")
+        cache_weight = os.path.join(weights_dir, self.CACHE_WEIGHT_FILENAME)
 
-        if os.path.exists(weight_file):
-            print(f"[RetinexFormer] Weights already exist: {weight_file}")
-            return weight_file
+        # Priority 1: model_cache (staged weights)
+        if os.path.exists(cache_weight):
+            print(f"[RetinexFormer] Weights found in cache: {cache_weight}")
+            return cache_weight
 
+        # Priority 2: Kaggle input dataset (manual upload)
+        kaggle_weight = self._find_kaggle_weight()
+        if kaggle_weight:
+            print(f"[RetinexFormer] Weights found in Kaggle input: {kaggle_weight}")
+            os.makedirs(weights_dir, exist_ok=True)
+            import shutil
+            shutil.copy2(kaggle_weight, cache_weight)
+            print(f"[RetinexFormer] Copied to cache: {cache_weight}")
+            return cache_weight
+
+        # Priority 3: llie-weights/ in repo root
+        repo_weight = self._find_repo_weight()
+        if repo_weight:
+            print(f"[RetinexFormer] Weights found in repo: {repo_weight}")
+            # Copy to cache for consistent path usage
+            os.makedirs(weights_dir, exist_ok=True)
+            import shutil
+            shutil.copy2(repo_weight, cache_weight)
+            print(f"[RetinexFormer] Copied to cache: {cache_weight}")
+            return cache_weight
+
+        # Priority 4: gdown download (last resort)
+        print("[RetinexFormer] Weights not found locally. Attempting gdown download...")
+        print("  Manual download: https://drive.google.com/drive/folders/1ynK5hfQachzc8y96ZumhkPPDXzHJwaQV")
+        print(f"  Save to: {cache_weight}")
         os.makedirs(weights_dir, exist_ok=True)
-        print("[RetinexFormer] Please download LOL_v1.pth manually from:")
-        print("  https://drive.google.com/drive/folders/1ynK5hfQachzc8y96ZumhkPPDXzHJwaQV")
-        print(f"  Save to: {weight_file}")
 
-        # Try gdown for Google Drive download
         try:
             import gdown
-            # LOL_v1.pth file ID (from RetinexFormer repo)
             url = "https://drive.google.com/uc?id=1sft9MU-fwtVH0ubNg-GPmGi1BVvIsFSi"
-            gdown.download(url, weight_file, quiet=False)
-            print(f"[RetinexFormer] Weights downloaded: {weight_file}")
+            gdown.download(url, cache_weight, quiet=False)
+            if os.path.exists(cache_weight):
+                print(f"[RetinexFormer] Weights downloaded: {cache_weight}")
+                return cache_weight
         except Exception as e:
-            print(f"[RetinexFormer] Auto-download failed: {e}")
-            print("  Install gdown: pip install gdown")
-            raise FileNotFoundError(f"Weights not found: {weight_file}")
+            print(f"[RetinexFormer] gdown download failed: {e}")
 
-        return weight_file
+        raise FileNotFoundError(
+            f"RetinexFormer weights not found.\n"
+            f"  Checked:\n"
+            f"    1. Cache: {cache_weight}\n"
+            f"    2. Kaggle input: {self.WEIGHT_FILENAME} or {self.CACHE_WEIGHT_FILENAME}\n"
+            f"    3. Repo llie-weights/: {self.WEIGHT_FILENAME}\n"
+            f"    4. gdown download: failed\n"
+            f"  Solution: place '{self.WEIGHT_FILENAME}' in llie-weights/ folder."
+        )
+
+    def _find_kaggle_weight(self) -> Optional[str]:
+        """Search for weight file in Kaggle input dataset root."""
+        kaggle_root = "/kaggle/input"
+        if not os.path.isdir(kaggle_root):
+            return None
+
+        import glob
+
+        patterns = [
+            os.path.join(kaggle_root, "**", self.WEIGHT_FILENAME),
+            os.path.join(kaggle_root, "**", self.CACHE_WEIGHT_FILENAME),
+        ]
+        for pattern in patterns:
+            matches = glob.glob(pattern, recursive=True)
+            if matches:
+                return matches[0]
+        return None
+
+    def _find_repo_weight(self) -> Optional[str]:
+        """Search for weight file in llie-weights/ directory of the repo."""
+        # Search upward from CWD and from this file's location
+        search_bases = [
+            os.getcwd(),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        ]
+        for base in search_bases:
+            candidate = os.path.join(base, "llie-weights", self.WEIGHT_FILENAME)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
 
     def load_model(self, device: str = None) -> None:
         """Load RetinexFormer model with LOL_v1 weights."""
@@ -70,7 +142,7 @@ class RetinexFormerEnhancer(BaseEnhancer):
         self.device = _auto_device(device)
 
         self._clone_repo()
-        self.weight_path = self._download_weights()
+        self.weight_path = self._resolve_weights()
 
         # Load architecture directly from the cloned repo file.
         # We CANNOT rely on sys.path + `import basicsr.models.archs...` because
