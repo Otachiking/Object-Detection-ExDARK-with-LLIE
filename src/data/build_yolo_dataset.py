@@ -62,6 +62,7 @@ def build_yolo_dataset(
     target_size: int = 640,
     class_names: Optional[Dict[int, str]] = None,
     force: bool = False,
+    splits_to_build: Optional[List[str]] = None,
 ) -> dict:
     """Build complete YOLO dataset structure from ExDark.
 
@@ -75,6 +76,7 @@ def build_yolo_dataset(
         target_size: Resize longest side to this value
         class_names: Dict mapping class_id → class_name
         force: If True, overwrite existing files
+        splits_to_build: List of splits to process (e.g. ["train", "val", "test"]). Defaults to all 3.
 
     Returns:
         Summary statistics
@@ -88,16 +90,26 @@ def build_yolo_dataset(
 
     summary = {"splits": {}, "errors": []}
 
-    # --- Overall skip check (all splits) ---
+    if splits_to_build is None:
+        splits_to_build = ["train", "val", "test"]
+
+    # --- Overall skip check (all requested splits) ---
     if not force:
-        print("[CHECK] Checking if YOLO dataset is already built...")
+        print("[CHECK] Checking if requested YOLO dataset splits are already built...")
         yaml_path = os.path.join(output_dir, "dataset.yaml")
-        images_train = os.path.join(output_dir, "images", "train")
-        is_built = os.path.exists(yaml_path) and os.path.isdir(images_train) and len(os.listdir(images_train)) > 0
+        
+        is_built = os.path.exists(yaml_path)
+        if is_built:
+            for split_name in splits_to_build:
+                images_split = os.path.join(output_dir, "images", split_name)
+                # Check if dir exists and has files (at least some images)
+                if not os.path.isdir(images_split) or len(os.listdir(images_split)) == 0:
+                    is_built = False
+                    break
         
         if is_built:
-            print(f"[SKIP] YOLO dataset already fully built in {output_dir}")
-            for split_name in ["train", "val", "test"]:
+            print(f"[SKIP] YOLO dataset splits already built in {output_dir}")
+            for split_name in splits_to_build:
                 images_out = os.path.join(output_dir, "images", split_name)
                 n = len([f for f in os.listdir(images_out)
                         if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]) if os.path.isdir(images_out) else 0
@@ -115,71 +127,78 @@ def build_yolo_dataset(
             continue
 
         entries = load_split_file(split_file)
-        print(f"\n[BUILD] Processing {split_name}: {len(entries)} images")
+        
+        # Decide if we need to build images for this split
+        build_images = split_name in splits_to_build
+
+        print(f"\n[BUILD] Processing {split_name}: {len(entries)} items (build_images={build_images})")
 
         # Create output directories
         images_out = os.path.join(output_dir, "images", split_name)
         labels_out = os.path.join(output_dir, "labels", split_name)
-        os.makedirs(images_out, exist_ok=True)
+        if build_images:
+            os.makedirs(images_out, exist_ok=True)
         os.makedirs(labels_out, exist_ok=True)
 
-        count_ok = 0
-        count_skip = 0
+        count_img_ok = 0
+        count_img_skip = 0
+        count_lbl_ok = 0
 
         for filename, class_folder in tqdm(entries, desc=f"  {split_name}"):
-            # Source image path
+            # Source paths
             src_image = os.path.join(exdark_images_dir, class_folder, filename)
-            if not os.path.exists(src_image):
-                summary["errors"].append(f"Image not found: {src_image}")
-                count_skip += 1
-                continue
-
-            # Source label (from converted labels dir, flat)
             label_stem = os.path.splitext(filename)[0]
             src_label = os.path.join(labels_dir, label_stem + ".txt")
 
-            # Output paths — save all as .jpg for consistency
+            # Output paths
             out_image_name = label_stem + ".jpg"
             dst_image = os.path.join(images_out, out_image_name)
             dst_label = os.path.join(labels_out, label_stem + ".txt")
 
-            # Skip if already processed (resume-safe)
-            if not force and os.path.exists(dst_image) and os.path.exists(dst_label):
-                count_ok += 1
-                continue
+            # 1. Copy label file (ALWAYS DO THIS)
+            if not os.path.exists(dst_label) or force:
+                if os.path.exists(src_label):
+                    shutil.copy2(src_label, dst_label)
+                else:
+                    with open(dst_label, "w") as f: pass
+                    summary["errors"].append(f"Label not found (created empty): {src_label}")
+            count_lbl_ok += 1
 
-            # Read, resize, save image
-            try:
-                img = cv2.imread(src_image)
-                if img is None:
-                    summary["errors"].append(f"Cannot read: {src_image}")
-                    count_skip += 1
+            # 2. Resize and save image (ONLY if build_images)
+            if build_images:
+                if not os.path.exists(src_image):
+                    summary["errors"].append(f"Image not found: {src_image}")
+                    count_img_skip += 1
                     continue
 
-                img_resized = resize_longest_side(img, target_size)
-                cv2.imwrite(dst_image, img_resized, [cv2.IMWRITE_JPEG_QUALITY, 95])
-            except Exception as e:
-                summary["errors"].append(f"Error processing {src_image}: {e}")
-                count_skip += 1
-                continue
+                if not force and os.path.exists(dst_image):
+                    count_img_ok += 1
+                    continue
 
-            # Copy label file
-            if os.path.exists(src_label):
-                shutil.copy2(src_label, dst_label)
-            else:
-                # Create empty label (image exists but no annotation)
-                with open(dst_label, "w") as f:
-                    pass
-                summary["errors"].append(f"Label not found (created empty): {src_label}")
+                try:
+                    img = cv2.imread(src_image)
+                    if img is None:
+                        summary["errors"].append(f"Cannot read: {src_image}")
+                        count_img_skip += 1
+                        continue
 
-            count_ok += 1
+                    img_resized = resize_longest_side(img, target_size)
+                    cv2.imwrite(dst_image, img_resized, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    count_img_ok += 1
+                except Exception as e:
+                    summary["errors"].append(f"Error processing {src_image}: {e}")
+                    count_img_skip += 1
+                    continue
 
-        summary["splits"][split_name] = {
-            "total": len(entries),
-            "processed": count_ok,
-            "skipped": count_skip,
-        }
-        print(f"  {split_name}: {count_ok} OK, {count_skip} skipped")
+        if build_images:
+            summary["splits"][split_name] = {
+                "total": len(entries),
+                "processed": count_img_ok,
+                "skipped": count_img_skip,
+            }
+            print(f"  {split_name}: {count_img_ok} imgs OK, {count_img_skip} imgs skipped, {count_lbl_ok} labels")
+        else:
+            print(f"  {split_name}: {count_lbl_ok} labels synced (images skipped)")
 
     # Generate dataset.yaml (use relative path so it works on any machine)
     dataset_yaml = {
