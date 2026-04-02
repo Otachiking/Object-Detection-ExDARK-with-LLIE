@@ -113,7 +113,7 @@ def train_yolo(
         project=project_dir,
         name=run_name_dir,
         exist_ok=yolo_cfg.get("exist_ok", True),
-        device=0 if torch.cuda.is_available() else "cpu",
+        device=[i for i in range(torch.cuda.device_count())] if torch.cuda.device_count() > 1 else (0 if torch.cuda.is_available() else "cpu"),
         workers=yolo_cfg.get("workers", 2),
         pretrained=yolo_cfg.get("pretrained", True),
         resume=resume,
