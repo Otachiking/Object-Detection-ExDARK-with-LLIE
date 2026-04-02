@@ -91,28 +91,16 @@ def build_yolo_dataset(
     # --- Overall skip check (all splits) ---
     if not force:
         print("[CHECK] Checking if YOLO dataset is already built...")
-        all_complete = True
-        for split_name in ["train", "val", "test"]:
-            split_file = os.path.join(splits_dir, f"{split_name}.txt")
-            images_out = os.path.join(output_dir, "images", split_name)
-            if not os.path.exists(split_file) or not os.path.isdir(images_out):
-                all_complete = False
-                break
-            expected = len(load_split_file(split_file))
-            print(f"  Counting {split_name} images...")
-            actual = len([f for f in os.listdir(images_out)
-                         if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
-            print(f"  {split_name}: {actual}/{expected}")
-            if actual < expected:
-                all_complete = False
-                break
-
-        if all_complete:
+        yaml_path = os.path.join(output_dir, "dataset.yaml")
+        images_train = os.path.join(output_dir, "images", "train")
+        is_built = os.path.exists(yaml_path) and os.path.isdir(images_train) and len(os.listdir(images_train)) > 0
+        
+        if is_built:
             print(f"[SKIP] YOLO dataset already fully built in {output_dir}")
             for split_name in ["train", "val", "test"]:
                 images_out = os.path.join(output_dir, "images", split_name)
                 n = len([f for f in os.listdir(images_out)
-                        if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))])
+                        if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]) if os.path.isdir(images_out) else 0
                 summary["splits"][split_name] = {
                     "total": n, "processed": n, "skipped": 0,
                 }

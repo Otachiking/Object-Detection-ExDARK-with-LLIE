@@ -221,6 +221,19 @@ def get_kaggle_enhanced_input(enhancer_name: str) -> str | None:
         if (dataset_root / "images").is_dir():
             return str(dataset_root)
 
+    # Fallback point: recursive glob to find the `images/train` or dataset.yaml
+    import glob
+    print(f"[Kaggle] Enhanced dataset explicit slug {candidate_slugs} not found, searching heuristically...")
+    for slug in candidate_slugs:
+        # Search for any directory under input that contains the slug in its path
+        for p in glob.glob(f"/kaggle/input/**/*{slug}*", recursive=True):
+            if os.path.isdir(p):
+                # Is it an enhanced output?
+                if os.path.isdir(os.path.join(p, "images", "train")):
+                    return p
+                if os.path.isdir(os.path.join(p, "enhanced", "images", "train")):
+                    return os.path.join(p, "enhanced")
+
     return None
 
 

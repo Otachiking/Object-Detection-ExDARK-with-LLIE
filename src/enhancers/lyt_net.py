@@ -295,9 +295,9 @@ class LYTNetEnhancer(BaseEnhancer):
         img_tensor = torch.from_numpy(img_rgb).float().permute(2, 0, 1).unsqueeze(0) / 255.0
         img_tensor = img_tensor.to(self.device)
 
-        # Pad to multiple of 4
-        pad_h = (4 - h % 4) % 4
-        pad_w = (4 - w % 4) % 4
+        # Pad to multiple of 32 to fix maxpool tensor matching length
+        pad_h = (32 - h % 32) % 32
+        pad_w = (32 - w % 32) % 32
         if pad_h > 0 or pad_w > 0:
             img_tensor = torch.nn.functional.pad(img_tensor, (0, pad_w, 0, pad_h), mode='reflect')
 
