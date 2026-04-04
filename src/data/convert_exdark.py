@@ -162,8 +162,8 @@ def convert_single_image(
     objects = parse_exdark_annotation(annot_path)
 
     if not objects:
-        stats["warnings"].append(f"No valid objects in: {annot_path}")
-        # Still create empty label file (YOLO expects it)
+        # Some images like 2015_05894.jpg don't have bounding boxes (background image).
+        # We silently create an empty label file instead of raising a warning
         os.makedirs(os.path.dirname(output_label_path), exist_ok=True)
         with open(output_label_path, "w") as f:
             pass
@@ -249,8 +249,15 @@ def convert_exdark_to_yolo(
                 continue
 
             image_path = os.path.join(img_dir, fname)
-            # ExDark annotation filename = image_filename + ".txt"
+            # ExDark annotation filename base
             annot_path = os.path.join(gt_dir, fname + ".txt")
+            # Fallback for Linux case-mismatch where image is .JPG but annot is .jpg.txt
+            if not os.path.exists(annot_path):
+                stem, ext = os.path.splitext(fname)
+                annot_path_lower = os.path.join(gt_dir, stem + ext.lower() + ".txt")
+                if os.path.exists(annot_path_lower):
+                    annot_path = annot_path_lower
+                    
             # YOLO label: same stem as image, .txt extension (flat)
             label_stem = os.path.splitext(fname)[0]
             label_path = os.path.join(output_labels_dir, label_stem + ".txt")

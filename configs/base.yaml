@@ -10,7 +10,7 @@ seed: 42
 yolo:
   model: "yolo11n.pt"          # YOLOv11 nano (pretrained COCO)
   imgsz: 640
-  epochs: 100                   # Override with QUICK_TEST for pipeline validation
+  epochs: 50                    # Override with QUICK_TEST for pipeline validation
   batch: 16                     # Fits T4 16GB for YOLO11n
   patience: 20                  # Early stopping patience
   optimizer: "auto"             # Ultralytics default (SGD)
