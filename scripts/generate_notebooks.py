@@ -198,7 +198,13 @@ from src.evaluation.nr_metrics import compute_nr_metrics
 raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
 test_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test") if enhancer_name else raw_test_dir
 
-nr = compute_nr_metrics(images_dir=test_dir, output_dir=SCENARIO_EVAL, scenario_name=SCENARIO_NAME, force=FORCE_EVALUATION)
+nr = compute_nr_metrics(
+    images_dir=test_dir, 
+    raw_images_dir=raw_test_dir, 
+    output_dir=SCENARIO_EVAL, 
+    scenario_name=SCENARIO_NAME, 
+    force=FORCE_EVALUATION
+)
 print(f"\\nNR-IQA (lower is better) — {SCENARIO_NAME}")
 print(f"  NIQE    : {nr.get('niqe_mean')}")
 print(f"  BRISQUE : {nr.get('brisque_mean')}")
@@ -242,9 +248,23 @@ results = evaluate_yolo(weights_path=best_pt, dataset_yaml=data_yaml, output_dir
 print(results.get("overall", {}))
 
 val_plots_dir = os.path.join(SCENARIO_EVAL, "val_plots")
+from src.evaluation.visualize import plot_validation_batches, plot_confusion_matrices
+
 if os.path.exists(val_plots_dir):
-    print("\\n[Visualisasi] Menampilkan Plot Validasi YOLO (Confusion Matrix, F1 Curve, dll):")
-    for f in sorted(glob.glob(os.path.join(val_plots_dir, "*.png")) + glob.glob(os.path.join(val_plots_dir, "*.jpg"))):
+    print("\\n[Visualisasi] Menampilkan Plot Validasi YOLO (Confusion Matrix & Batches):")
+    
+    # 1. Confusion Matrix Grid
+    cm_path = plot_confusion_matrices(val_plots_dir, SCENARIO_EVAL, SCENARIO_NAME)
+    if cm_path and os.path.exists(cm_path):
+        display(Image(filename=cm_path))
+        
+    # 2. Validation Batches Grid
+    batches_path = plot_validation_batches(val_plots_dir, SCENARIO_EVAL, SCENARIO_NAME)
+    if batches_path and os.path.exists(batches_path):
+        display(Image(filename=batches_path))
+        
+    # 3. All other F1/PR Curves
+    for f in sorted(glob.glob(os.path.join(val_plots_dir, "*_curve.png"))):
         display(Image(filename=f))
 """
 

@@ -204,9 +204,10 @@ def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir,
         return boxes
 
     n = len(sample_imgs)
-    fig, axes = plt.subplots(n, 2, figsize=(16, 4.5 * n), gridspec_kw={"wspace": 0.03, "hspace": 0.12})
-    fig.suptitle(f"Detection Results — {scenario_name}\nLeft: Ground Truth  |  Right: Prediction (conf >= 0.25)", fontsize=16, fontweight="bold", y=1.0)
+    fig, axes = plt.subplots(n, 2, figsize=(14, 4.0 * n), gridspec_kw={"wspace": 0.05, "hspace": 0.20})
+    fig.suptitle(f"Detection Results — {scenario_name}\\nLeft: Ground Truth  |  Right: Prediction (conf >= 0.25)", fontsize=16, fontweight="bold", y=0.96)
     if n == 1: axes = axes.reshape(1, 2)
+    fig.subplots_adjust(top=0.92)
     
     for idx, img_path in enumerate(sample_imgs):
         fname = os.path.basename(img_path)
@@ -231,4 +232,65 @@ def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir,
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved -> {save_path}")
+    return save_path
+
+def plot_validation_batches(val_dir, output_dir, scenario_name):
+    """Plot YOLO validation batches (predictions vs labels) as a grid."""
+    os.makedirs(output_dir, exist_ok=True)
+    batch_preds = sorted(glob.glob(os.path.join(val_dir, "val_batch*_pred.jpg")))
+    batch_labels = sorted(glob.glob(os.path.join(val_dir, "val_batch*_labels.jpg")))
+    
+    if not batch_preds or not batch_labels:
+        return None
+        
+    n_batches = min(len(batch_preds), 3) # Max 3 batches
+    fig, axes = plt.subplots(2, n_batches, figsize=(n_batches * 8, 12))
+    fig.suptitle(f"Validation Batches — {scenario_name}\\nTop row: Predictions  |  Bottom row: Ground Truth Labels", fontsize=18, fontweight='bold', y=0.98)
+    if n_batches == 1: axes = axes.reshape(2, 1)
+    
+    for i in range(n_batches):
+        p_img = mpimg.imread(batch_preds[i])
+        l_img = mpimg.imread(batch_labels[i])
+        
+        axes[0, i].imshow(p_img)
+        axes[0, i].set_title(os.path.basename(batch_preds[i]))
+        axes[0, i].axis('off')
+        
+        axes[1, i].imshow(l_img)
+        axes[1, i].set_title(os.path.basename(batch_labels[i]))
+        axes[1, i].axis('off')
+        
+    plt.tight_layout()
+    fig.subplots_adjust(top=0.93, hspace=0.15)
+    save_path = os.path.join(output_dir, "validation_batches.png")
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    return save_path
+
+def plot_confusion_matrices(val_dir, output_dir, scenario_name):
+    """Plot Confusion Matrix and Normalized Confusion Matrix side-by-side."""
+    os.makedirs(output_dir, exist_ok=True)
+    cm_norm = os.path.join(val_dir, "confusion_matrix_normalized.png")
+    cm = os.path.join(val_dir, "confusion_matrix.png")
+    
+    matrices = []
+    if os.path.exists(cm): matrices.append(("Counts", cm))
+    if os.path.exists(cm_norm): matrices.append(("Normalized", cm_norm))
+    
+    if not matrices: return None
+    
+    fig, axes = plt.subplots(1, len(matrices), figsize=(10 * len(matrices), 10))
+    if len(matrices) == 1: axes = [axes]
+    
+    fig.suptitle(f"Confusion Matrix — {scenario_name}", fontsize=18, fontweight='bold', y=0.98)
+    for i, (title, img_path) in enumerate(matrices):
+        axes[i].imshow(mpimg.imread(img_path))
+        axes[i].set_title(title, fontsize=14, fontweight='bold')
+        axes[i].axis('off')
+        
+    plt.tight_layout()
+    fig.subplots_adjust(top=0.94)
+    save_path = os.path.join(output_dir, "confusion_matrix_grid.png")
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
     return save_path
