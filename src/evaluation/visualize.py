@@ -74,9 +74,11 @@ def plot_sample_images(raw_test_dir, enh_test_dir, output_dir, scenario_name, en
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Saved -> {save_path}")
+    return save_path
 
 def plot_training_curves(run_dir_train, output_dir, scenario_name):
     os.makedirs(output_dir, exist_ok=True)
+    out_paths = []
     results_csv = os.path.join(run_dir_train, "results.csv")
     if not os.path.exists(results_csv):
         candidates = glob.glob(os.path.join(run_dir_train, "**", "results.csv"), recursive=True)
@@ -118,8 +120,10 @@ def plot_training_curves(run_dir_train, output_dir, scenario_name):
                 axes[1, i].grid(True, alpha=0.3); axes[1, i].set_ylim(0, 1.05)
                 
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, "training_curves.png"), dpi=150, bbox_inches='tight')
+        p1 = os.path.join(output_dir, "training_curves.png")
+        plt.savefig(p1, dpi=150, bbox_inches='tight')
         plt.close()
+        out_paths.append(p1)
         
         if "metrics/mAP50(B)" in df.columns and "metrics/mAP50-95(B)" in df.columns:
             fig2, ax2 = plt.subplots(figsize=(10, 5))
@@ -129,8 +133,10 @@ def plot_training_curves(run_dir_train, output_dir, scenario_name):
             ax2.set_xlabel("Epoch"); ax2.set_ylabel("mAP")
             ax2.legend(fontsize=11); ax2.grid(True, alpha=0.3); ax2.set_ylim(0, 1.05)
             plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, "mAP_progression.png"), dpi=150, bbox_inches='tight')
+            p2 = os.path.join(output_dir, "mAP_progression.png")
+            plt.savefig(p2, dpi=150, bbox_inches='tight')
             plt.close()
+            out_paths.append(p2)
             
     # Copy generated summaries
     ultralytics_results = os.path.join(run_dir_train, "results.png")
@@ -144,6 +150,9 @@ def plot_training_curves(run_dir_train, output_dir, scenario_name):
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
         print(f"Saved -> {save_path}")
+        out_paths.append(save_path)
+        
+    return out_paths
 
 def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir, scenario_name):
     os.makedirs(output_dir, exist_ok=True)
@@ -218,8 +227,8 @@ def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir,
         axes[idx, 1].set_title(f"Pred: {fname}", fontsize=9, loc="left")
         axes[idx, 1].axis("off")
         
-    plt.tight_layout()
     save_path = os.path.join(output_dir, "detection_samples_gt_vs_pred.png")
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved -> {save_path}")
+    return save_path

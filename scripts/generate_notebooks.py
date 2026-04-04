@@ -176,13 +176,17 @@ stats = enhance_dataset(enhancer=enhancer, source_dataset_dir=yolo_dir, output_d
 FASE2_5_CELL = """\
 #@title Fase 2.5 · Sample Test Images Preview
 from src.evaluation.visualize import plot_sample_images
-plot_sample_images(
+from IPython.display import Image, display
+
+saved_path = plot_sample_images(
     raw_test_dir=os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test"),
     enh_test_dir=os.path.join(SCENARIO_DIR, "enhanced", "images", "test") if enhancer_name else None,
     output_dir=SCENARIO_EVAL,
     scenario_name=SCENARIO_NAME,
     enhancer_name=enhancer_name
 )
+if saved_path and os.path.exists(saved_path):
+    display(Image(filename=saved_path))
 """
 
 FASE3_CELL = """\
@@ -213,7 +217,12 @@ best_pt = get_best_weights(SCENARIO_RUNS)
 FASE4_5_CELL = """\
 #@title Fase 4.5 · Training Curves & Figures
 from src.evaluation.visualize import plot_training_curves
-plot_training_curves(run_dir_train=SCENARIO_RUNS, output_dir=SCENARIO_EVAL, scenario_name=SCENARIO_NAME)
+from IPython.display import Image, display
+
+curve_paths = plot_training_curves(run_dir_train=SCENARIO_RUNS, output_dir=SCENARIO_EVAL, scenario_name=SCENARIO_NAME)
+for p in curve_paths:
+    if p and os.path.exists(p):
+        display(Image(filename=p))
 """
 
 FASE5_CELL = """\
@@ -231,17 +240,20 @@ print(results.get("overall", {}))
 FASE5_5_CELL = """\
 #@title Fase 5.5 · Detection Visualization (GT vs Prediction)
 from src.evaluation.visualize import plot_detection_results
+from IPython.display import Image, display
 
 test_img_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test") if enhancer_name else os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
 test_lbl_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "labels", "test")
 
-plot_detection_results(
+det_path = plot_detection_results(
     weights_path=best_pt,
     test_img_dir=test_img_dir,
     test_lbl_dir=test_lbl_dir,
     output_dir=SCENARIO_EVAL,
     scenario_name=SCENARIO_NAME
 )
+if det_path and os.path.exists(det_path):
+    display(Image(filename=det_path))
 """
 
 FASE6_CELL = """\
@@ -262,18 +274,28 @@ print("Notebook finished running all modular phases.")
 
 def build_scenario_notebook(key: str, name: str):
     cells = [
-        md(f"# Scenario {name}\nModular Pipeline architecture", "md-h"),
+        md(f"# Scenario {name}\nModular Pipeline architecture", "md-title"),
+        md("--- \n ## 0. Setup", "md-setup"),
         code(SETUP_CELL.format(scenario_key=key, scenario_name=name), "c-setup"),
         code(INSTALL_CELL, "c-install"),
         code(CONFIG_CELL, "c-config"),
+        md("--- \n ## Fase 1: Data Preparation", "md-f1"),
         code(FASE1_CELL, "c-f1"),
+        md("--- \n ## Fase 2: Image Enhancement", "md-f2"),
         code(fase2_cell_for(key), "c-f2"),
+        md("--- \n ## Fase 2.5: Sample Test Images — Original vs Enhanced", "md-f2.5"),
         code(FASE2_5_CELL, "c-f2.5"),
+        md("--- \n ## Fase 3: Image Quality Metrics", "md-f3"),
         code(FASE3_CELL, "c-f3"),
+        md("--- \n ## Fase 4: Training", "md-f4"),
         code(FASE4_CELL, "c-f4"),
+        md("--- \n ## Fase 4.5: Training Curves & Figures", "md-f4.5"),
         code(FASE4_5_CELL, "c-f4.5"),
+        md("--- \n ## Fase 5: Detection Evaluation", "md-f5"),
         code(FASE5_CELL, "c-f5"),
+        md("--- \n ## Fase 5.5: Detection Visualization (GT vs Prediction)", "md-f5.5"),
         code(FASE5_5_CELL, "c-f5.5"),
+        md("--- \n ## Fase 6: Latency & FLOPs", "md-f6"),
         code(FASE6_CELL, "c-f6"),
         code(DONE_CELL, "c-done")
     ]
