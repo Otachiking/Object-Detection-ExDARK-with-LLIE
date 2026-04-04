@@ -60,6 +60,13 @@ def train_yolo(
     if not force and os.path.exists(best_pt):
         print(f"\n[SKIP] Training already complete for {scenario_name}")
         print(f"  best.pt: {best_pt}")
+        try:
+            ckpt = torch.load(best_pt, map_location="cpu")
+            if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
+                print(f"  → Model ini mencapai performa mAP tertinggi pada Epoch {ckpt['epoch'] + 1} !!")
+        except Exception:
+            pass
+            
         print(f"  → To retrain, pass force=True or delete {run_dir}")
         return {
             "scenario": scenario_name,
@@ -152,6 +159,14 @@ def train_yolo(
     print(f"  Duration : {int(_hrs)}h {int(_mins)}m {_secs:.1f}s ({_elapsed/60:.1f} min total)")
     print(f"  Epochs   : {epochs}")
     print(f"  best.pt  : {'✓' if os.path.exists(best_pt) else '✗'} {best_pt}")
+    if os.path.exists(best_pt):
+        try:
+            ckpt = torch.load(best_pt, map_location="cpu")
+            if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
+                print(f"  → Puncak metrik (mAP) tertinggi diraih pada Epoch {ckpt['epoch'] + 1}")
+        except Exception:
+            pass
+            
     print(f"  last.pt  : {'✓' if os.path.exists(last_pt) else '✗'} {last_pt}")
     print(f"{'='*60}")
 

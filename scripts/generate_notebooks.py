@@ -199,7 +199,10 @@ raw_test_dir = os.path.join(PREPARED_DIR, "ExDark_yolo", "images", "test")
 test_dir = os.path.join(SCENARIO_DIR, "enhanced", "images", "test") if enhancer_name else raw_test_dir
 
 nr = compute_nr_metrics(images_dir=test_dir, output_dir=SCENARIO_EVAL, scenario_name=SCENARIO_NAME, force=FORCE_EVALUATION)
-print(f"NIQE: {nr.get('niqe_mean')} | BRISQUE: {nr.get('brisque_mean')} | LOE: {nr.get('loe_mean')}")
+print(f"\\nNR-IQA (lower is better) — {SCENARIO_NAME}")
+print(f"  NIQE    : {nr.get('niqe_mean')}")
+print(f"  BRISQUE : {nr.get('brisque_mean')}")
+print(f"  LOE     : {nr.get('loe_mean')}")
 """
 
 FASE4_CELL = """\
@@ -229,12 +232,20 @@ FASE5_CELL = """\
 #@title Fase 5 · Detection Evaluation
 # Evaluasi otomatis retrain jika FORCE_EVALUATION True
 from src.evaluation.eval_yolo import evaluate_yolo
+import glob
+from IPython.display import Image, display
 
 data_yaml = os.path.join(SCENARIO_DIR, "enhanced", "dataset.yaml") if enhancer_name else os.path.join(PREPARED_DIR, "ExDark_yolo", "dataset.yaml")
 best_pt = get_best_weights(SCENARIO_RUNS)
 
 results = evaluate_yolo(weights_path=best_pt, dataset_yaml=data_yaml, output_dir=SCENARIO_EVAL, scenario_name=SCENARIO_NAME, force=FORCE_EVALUATION)
 print(results.get("overall", {}))
+
+val_plots_dir = os.path.join(SCENARIO_EVAL, "val_plots")
+if os.path.exists(val_plots_dir):
+    print("\\n[Visualisasi] Menampilkan Plot Validasi YOLO (Confusion Matrix, F1 Curve, dll):")
+    for f in sorted(glob.glob(os.path.join(val_plots_dir, "*.png")) + glob.glob(os.path.join(val_plots_dir, "*.jpg"))):
+        display(Image(filename=f))
 """
 
 FASE5_5_CELL = """\

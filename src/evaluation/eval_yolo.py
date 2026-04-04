@@ -94,6 +94,9 @@ def evaluate_yolo(
         iou=iou,
         device=device,
         imgsz=imgsz,
+        project=output_dir,
+        name="val_plots",
+        exist_ok=True,
         verbose=True,
     )
 
