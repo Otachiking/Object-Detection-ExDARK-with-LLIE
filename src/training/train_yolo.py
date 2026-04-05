@@ -63,9 +63,9 @@ def train_yolo(
         try:
             ckpt = torch.load(best_pt, map_location="cpu")
             if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
-                print(f"  → Model ini mencapai performa mAP tertinggi pada Epoch {ckpt['epoch'] + 1} !!")
-        except Exception:
-            pass
+                print(f"  [INFO] 🌟 BEST WEIGHTS TERPILIH: Model 'best.pt' ini diambil dari Epoch ke-{(ckpt['epoch'] + 1)} (berdasarkan mAP tertinggi).")
+        except Exception as e:
+            print(f"  [WARN] Tidak bisa membaca file weights untuk mendapatkan informasi epoch: {e}")
             
         print(f"  → To retrain, pass force=True or delete {run_dir}")
         return {
@@ -163,9 +163,9 @@ def train_yolo(
         try:
             ckpt = torch.load(best_pt, map_location="cpu")
             if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
-                print(f"  → Puncak metrik (mAP) tertinggi diraih pada Epoch {ckpt['epoch'] + 1}")
-        except Exception:
-            pass
+                print(f"  [INFO] 🌟 BEST WEIGHTS TERPILIH: Model 'best.pt' ini diambil dari Epoch ke-{(ckpt['epoch'] + 1)} (berdasarkan mAP tertinggi).")
+        except Exception as e:
+            print(f"  [WARN] Tidak bisa membaca file weights untuk mendapatkan informasi epoch: {e}")
             
     print(f"  last.pt  : {'✓' if os.path.exists(last_pt) else '✗'} {last_pt}")
     print(f"{'='*60}")

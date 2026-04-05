@@ -205,9 +205,9 @@ def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir,
 
     n = len(sample_imgs)
     fig, axes = plt.subplots(n, 2, figsize=(14, 4.0 * n), gridspec_kw={"wspace": 0.05, "hspace": 0.20})
-    fig.suptitle(f"Detection Results — {scenario_name}\\nLeft: Ground Truth  |  Right: Prediction (conf >= 0.25)", fontsize=16, fontweight="bold", y=0.96)
+    fig.suptitle(f"Detection Results — {scenario_name}\\nLeft: Ground Truth  |  Right: Prediction (conf >= 0.25)", fontsize=16, fontweight="bold", y=0.94)
     if n == 1: axes = axes.reshape(1, 2)
-    fig.subplots_adjust(top=0.92)
+    fig.subplots_adjust(top=0.90)
     
     for idx, img_path in enumerate(sample_imgs):
         fname = os.path.basename(img_path)
@@ -245,7 +245,7 @@ def plot_validation_batches(val_dir, output_dir, scenario_name):
         
     n_batches = min(len(batch_preds), 3) # Max 3 batches
     # Mengurangi aspect rasio dari tinggi (12 -> 7) agar secara keseluruhan tidak terlalu panjang vertikalnya
-    fig, axes = plt.subplots(2, n_batches, figsize=(n_batches * 8, 7))
+    fig, axes = plt.subplots(2, n_batches, figsize=(n_batches * 9, 7))
     fig.suptitle(f"Validation Batches — {scenario_name}\\nTop row: Predictions  |  Bottom row: Ground Truth Labels", fontsize=18, fontweight='bold', y=0.98)
     if n_batches == 1: axes = axes.reshape(2, 1)
     
@@ -263,7 +263,7 @@ def plot_validation_batches(val_dir, output_dir, scenario_name):
         
     plt.tight_layout()
     # Mengurangi hspace (height space) dari 0.15 ke 0.04 agar antar 2 baris (top dan bottom) jaraknya jadi dekat sekali.
-    fig.subplots_adjust(top=0.90, hspace=0.04)
+    fig.subplots_adjust(top=0.90, hspace=0.1)
     save_path = os.path.join(output_dir, "validation_batches.png")
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
