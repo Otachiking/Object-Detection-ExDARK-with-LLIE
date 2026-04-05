@@ -201,4 +201,12 @@ def get_best_weights(run_dir: str) -> str:
             print(f"[WARN] best.pt not found, using last.pt: {last_pt}")
             return last_pt
         raise FileNotFoundError(f"No weights found in {run_dir}/weights/")
+    else:
+        try:
+            import torch
+            ckpt = torch.load(best_pt, map_location="cpu")
+            if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
+                print(f"[INFO] 🌟 BEST WEIGHTS TERPILIH: Model 'best.pt' ini diambil dari Epoch ke-{(ckpt['epoch'] + 1)} (berdasarkan mAP tertinggi).")
+        except Exception:
+            pass
     return best_pt

@@ -244,7 +244,8 @@ def plot_validation_batches(val_dir, output_dir, scenario_name):
         return None
         
     n_batches = min(len(batch_preds), 3) # Max 3 batches
-    fig, axes = plt.subplots(2, n_batches, figsize=(n_batches * 8, 12))
+    # Mengurangi aspect rasio dari tinggi (12 -> 7) agar secara keseluruhan tidak terlalu panjang vertikalnya
+    fig, axes = plt.subplots(2, n_batches, figsize=(n_batches * 8, 7))
     fig.suptitle(f"Validation Batches — {scenario_name}\\nTop row: Predictions  |  Bottom row: Ground Truth Labels", fontsize=18, fontweight='bold', y=0.98)
     if n_batches == 1: axes = axes.reshape(2, 1)
     
@@ -261,7 +262,8 @@ def plot_validation_batches(val_dir, output_dir, scenario_name):
         axes[1, i].axis('off')
         
     plt.tight_layout()
-    fig.subplots_adjust(top=0.93, hspace=0.15)
+    # Mengurangi hspace (height space) dari 0.15 ke 0.04 agar antar 2 baris (top dan bottom) jaraknya jadi dekat sekali.
+    fig.subplots_adjust(top=0.90, hspace=0.04)
     save_path = os.path.join(output_dir, "validation_batches.png")
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
