@@ -61,7 +61,7 @@ def train_yolo(
         print(f"\n[SKIP] Training already complete for {scenario_name}")
         print(f"  best.pt: {best_pt}")
         try:
-            ckpt = torch.load(best_pt, map_location="cpu")
+            ckpt = torch.load(best_pt, map_location="cpu", weights_only=False)
             if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
                 print(f"  [INFO] 🌟 BEST WEIGHTS TERPILIH: Model 'best.pt' ini diambil dari Epoch ke-{(ckpt['epoch'] + 1)} (berdasarkan mAP tertinggi).")
         except Exception as e:
@@ -98,14 +98,14 @@ def train_yolo(
     print(f"[TRAIN] Dataset: {dataset_yaml}")
     print(f"[TRAIN] Output: {project_dir}/{run_name_dir}")
     print(f"[TRAIN] Epochs: {epochs}, Batch: {batch}, Seed: {seed}")
-    print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolo11n.pt')}")
+    print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolo11s.pt')}")
     print(f"{'='*60}\n")
 
     # --- Defensive: ensure dataset.yaml uses absolute path (fixes Windows path issue) ---
     patch_dataset_yaml_path(dataset_yaml)
 
     # Initialize YOLO model
-    model_name = yolo_cfg.get("model", "yolo11n.pt")
+    model_name = yolo_cfg.get("model", "yolo11s.pt")
     model = YOLO(model_name)
 
     # Train with unified hyperparameters
@@ -161,7 +161,7 @@ def train_yolo(
     print(f"  best.pt  : {'✓' if os.path.exists(best_pt) else '✗'} {best_pt}")
     if os.path.exists(best_pt):
         try:
-            ckpt = torch.load(best_pt, map_location="cpu")
+            ckpt = torch.load(best_pt, map_location="cpu", weights_only=False)
             if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
                 print(f"  [INFO] 🌟 BEST WEIGHTS TERPILIH: Model 'best.pt' ini diambil dari Epoch ke-{(ckpt['epoch'] + 1)} (berdasarkan mAP tertinggi).")
         except Exception as e:
@@ -204,7 +204,7 @@ def get_best_weights(run_dir: str) -> str:
     else:
         try:
             import torch
-            ckpt = torch.load(best_pt, map_location="cpu")
+            ckpt = torch.load(best_pt, map_location="cpu", weights_only=False)
             if "epoch" in ckpt and isinstance(ckpt["epoch"], int) and ckpt["epoch"] >= 0:
                 print(f"[INFO] 🌟 BEST WEIGHTS TERPILIH: Model 'best.pt' ini diambil dari Epoch ke-{(ckpt['epoch'] + 1)} (berdasarkan mAP tertinggi).")
         except Exception:
