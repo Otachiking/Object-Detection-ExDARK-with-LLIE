@@ -121,9 +121,16 @@ def train_yolo(
         name=run_name_dir,
         exist_ok=yolo_cfg.get("exist_ok", True),
         device=[i for i in range(torch.cuda.device_count())] if torch.cuda.device_count() > 1 else (0 if torch.cuda.is_available() else "cpu"),
-        workers=yolo_cfg.get("workers", 2),
+        workers=yolo_cfg.get("workers", 4),
         pretrained=yolo_cfg.get("pretrained", True),
         resume=resume,
+
+        # Optimizer & Learning Rate
+        optimizer=yolo_cfg.get("optimizer", "auto"),
+        lr0=yolo_cfg.get("lr0", 0.01),
+        lrf=yolo_cfg.get("lrf", 0.01),
+        weight_decay=yolo_cfg.get("weight_decay", 0.0005),
+        warmup_epochs=yolo_cfg.get("warmup_epochs", 3.0),
 
         # Augmentation — identical for all scenarios
         hsv_h=yolo_cfg.get("hsv_h", 0.015),
