@@ -35,7 +35,7 @@ def compute_yolo_flops(
     # model.info() returns (layers, params, gradients, flops)
     # Access from model directly
     results = {
-        "model": "YOLO11n",
+        "model": "YOLOv7n",
         "input_size": f"{imgsz}x{imgsz}",
         "params": None,
         "gflops": None,
@@ -61,7 +61,7 @@ def compute_yolo_flops(
         results["params_m"] = params / 1e6
     except Exception as e:
         print(f"[FLOPs] thop failed (non-critical): {e}")
-        # Fallback: known value for YOLO11n
+        # Fallback: known value for YOLOv7n
         results["gflops"] = 6.5  # Approximate known value
         results["note"] = "approximate (thop failed)"
 
