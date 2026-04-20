@@ -8,7 +8,7 @@ seed: 42
 
 # --- YOLO Training ---
 yolo:
-  model: "yolov7n.pt"          # YOLOv7 nano
+  model: "yolov7-tiny.pt"          # YOLOv7 nano
   imgsz: 640
   epochs: 50                    # Override with QUICK_TEST for pipeline validation
   batch: 16                     # Fits T4 16GB for YOLO11n
