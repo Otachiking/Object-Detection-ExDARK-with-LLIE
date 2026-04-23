@@ -8,10 +8,10 @@ seed: 42
 
 # --- YOLO Training ---
 yolo:
-  model: "yolov7-tiny.pt"          # YOLOv7 nano
+  model: "yolov10n.pt"          # YOLOv10 nano
   imgsz: 640
   epochs: 50                    # Override with QUICK_TEST for pipeline validation
-  batch: 16                     # Fits T4 16GB for YOLO11n
+  batch: 16                     # Fits T4 16GB for YOLO10n  
   patience: 10                  # Early stopping patience
   optimizer: "auto"             # Ultralytics default (SGD)
   workers: 4                    # Kaggle Dual T4 optimal
