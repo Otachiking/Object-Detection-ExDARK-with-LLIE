@@ -98,14 +98,14 @@ def train_yolo(
     print(f"[TRAIN] Dataset: {dataset_yaml}")
     print(f"[TRAIN] Output: {project_dir}/{run_name_dir}")
     print(f"[TRAIN] Epochs: {epochs}, Batch: {batch}, Seed: {seed}")
-    print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolov10n.pt')}")
+    print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolo12n.pt')}")
     print(f"{'='*60}\n")
 
     # --- Defensive: ensure dataset.yaml uses absolute path (fixes Windows path issue) ---
     patch_dataset_yaml_path(dataset_yaml)
 
     # Initialize YOLO model
-    model_name = yolo_cfg.get("model", "yolov10n.pt")
+    model_name = yolo_cfg.get("model", "yolo12n.pt")
     model = YOLO(model_name)
 
     # Train with unified hyperparameters
