@@ -203,6 +203,7 @@ def get_kaggle_enhanced_input(enhancer_name: str) -> str | None:
     """
     slug = enhancer_name.lower().replace("_", "-")
     candidate_slugs = [
+        "exdark-dataset-generalization",
         f"exdark-{slug}",
         f"exdark-enhanced-{slug}",
     ]
