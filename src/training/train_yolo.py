@@ -30,6 +30,7 @@ def train_yolo(
     run_name: str = None,
     resume: bool = False,
     force: bool = False,
+    use_pretrained: bool = True,
 ) -> dict:
     """Train YOLOv11n for a specific scenario.
 
@@ -44,6 +45,7 @@ def train_yolo(
                   Defaults to scenario_name if None.
         resume: Resume from last.pt if available
         force: If True, retrain even if best.pt exists
+        use_pretrained: If True, use .pt weights. If False, train from scratch using .yaml architecture.
 
     Returns:
         Training results dict
@@ -98,14 +100,30 @@ def train_yolo(
     print(f"[TRAIN] Dataset: {dataset_yaml}")
     print(f"[TRAIN] Output: {project_dir}/{run_name_dir}")
     print(f"[TRAIN] Epochs: {epochs}, Batch: {batch}, Seed: {seed}")
-    print(f"[TRAIN] Model: {yolo_cfg.get('model', 'yolo12n.pt')}")
+    
+    # Initialize YOLO model properly based on pre-trained choice
+    model_name = yolo_cfg.get("model", "yolo11n.pt")
+    
+    if not use_pretrained:
+        # Override to use the yaml architecture instead of the .pt weights (train from scratch)
+        if model_name.endswith('.pt'):
+            model_name = model_name.replace('.pt', '.yaml')
+        yolo_cfg["pretrained"] = False
+        print(f"[TRAIN] Mode: Train from SCRATCH (No Pretrained Weights)")
+    else:
+        # Ensure it uses .pt if pretrained is True
+        if model_name.endswith('.yaml'):
+            model_name = model_name.replace('.yaml', '.pt')
+        yolo_cfg["pretrained"] = True
+        print(f"[TRAIN] Mode: PRETRAINED Weights loaded")
+
+    print(f"[TRAIN] Model: {model_name}")
     print(f"{'='*60}\n")
 
     # --- Defensive: ensure dataset.yaml uses absolute path (fixes Windows path issue) ---
     patch_dataset_yaml_path(dataset_yaml)
 
     # Initialize YOLO model
-    model_name = yolo_cfg.get("model", "yolo12n.pt")
     model = YOLO(model_name)
 
     # Train with unified hyperparameters

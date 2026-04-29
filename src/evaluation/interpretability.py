@@ -14,7 +14,7 @@ def generate_and_plot_yolo_vision(weights_path, test_images_dir, output_dir, sce
     """
     # 1. FIXED IMAGE TARGETS
     if target_images is None:
-        target_images = ['2015_00402.jpg', '2015_00403.jpg', '2015_00523.jpg']
+        target_images = ['2015_00402.jpg', '2015_00403.jpg', '2015_00523.jpg', '2015_00448.jpg', '2015_01739.jpg']
         
     out_path_f56 = os.path.join(output_dir, "interpretability")
     os.makedirs(out_path_f56, exist_ok=True)
