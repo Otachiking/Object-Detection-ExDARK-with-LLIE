@@ -25,9 +25,10 @@ def main():
     parser.add_argument("--quick-test", action="store_true", help="Quick test mode (1 epoch)")
     parser.add_argument("--config-dir", default=None, help="Config directory override")
     parser.add_argument("--resume", default=None, help="Resume from checkpoint path")
+    parser.add_argument("--epochs", type=int, default=None, help="Epochs override")
     args = parser.parse_args()
 
-    cfg = load_config(args.scenario, config_dir=args.config_dir, quick_test=args.quick_test)
+    cfg = load_config(args.scenario, config_dir=args.config_dir, quick_test=args.quick_test, epochs=args.epochs)
     set_global_seed(cfg["seed"])
 
     scenario_name = cfg.get("scenario_name", args.scenario)

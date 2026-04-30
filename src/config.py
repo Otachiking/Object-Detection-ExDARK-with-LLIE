@@ -72,9 +72,10 @@ def load_yaml(path: str) -> dict:
 
 
 def load_config(
-    scenario: str = "s1_raw",
+    scenario: str = "s2_hvi_cidnet",
     config_dir: Optional[str] = None,
     quick_test: bool = False,
+    epochs: Optional[int] = None,
 ) -> dict:
     """Load and merge configuration for a scenario.
 
@@ -82,6 +83,7 @@ def load_config(
         scenario: Scenario name (s1_raw, s2_hvi_cidnet, s3_retinexformer, s4_lyt_net)
         config_dir: Path to configs/ directory. Auto-detected if None.
         quick_test: Override to quick test mode (1 epoch).
+        epochs: Optional override for YOLO training epochs.
 
     Returns:
         Merged configuration dictionary with resolved paths.
@@ -131,10 +133,6 @@ def load_config(
     config = _deep_merge(config, scenario_cfg)
 
     # Backward-compatibility aliases for older notebook/script keys
-    # Expected old keys:
-    #   config["paths"]["output_root"]
-    #   config["paths"]["exdark_root"]
-    #   config["paths"]["exdark_structure"]["images"|"groundtruth"|"classlist"]
     p = config.setdefault("paths", {})
     data = p.get("data", {})
     exdark_meta = config.get("paths_meta", {}).get("exdark", {})
@@ -160,14 +158,20 @@ def load_config(
         "platform": platform.system(),
     }
 
+    # Manual Epochs Override
+    if epochs is not None:
+        config["yolo"]["epochs"] = epochs
+        print(f"[CONFIG] Manual epochs override: {epochs}")
+
     # Quick test override
     if quick_test or config.get("quick_test", False):
         config["quick_test"] = True
         config["yolo"]["epochs"] = config.get("quick_test_epochs", 1)
         config["yolo"]["batch"] = config.get("quick_test_batch", 8)
-        print("[CONFIG] Quick test mode: epochs=1, batch=8")
+        print("[CONFIG] Quick test mode active: epochs=1, batch=8")
 
     return config
+
 
 
 def get_data_paths(config: dict) -> dict:
