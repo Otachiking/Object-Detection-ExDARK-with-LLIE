@@ -86,6 +86,25 @@ def evaluate_yolo(
     # Load model
     model = YOLO(weights_path)
 
+    # Extract Epoch and Model Info for display
+    epoch_str = "???"
+    model_str = "unknown_model"
+    if hasattr(model, "ckpt") and model.ckpt is not None:
+        train_args = model.ckpt.get("train_args", {})
+        if train_args and isinstance(train_args, dict):
+            epochs = train_args.get("epochs", "???")
+            epoch_str = str(epochs)
+            
+            base_model = train_args.get("model", "unknown_model")
+            base_model_name = os.path.basename(str(base_model))
+            
+            pretrained = train_args.get("pretrained", False)
+            if pretrained:
+                model_str = base_model_name
+            else:
+                model_str = f"{base_model_name} (Scratch)"
+
+
     # Run validation on specified split
     results = model.val(
         data=dataset_yaml,
@@ -156,7 +175,7 @@ def evaluate_yolo(
         print(f"[EVAL] Per-class CSV: {csv_path}")
 
     # Print summary
-    print(f"\n[EVAL] === {scenario_name} Results ===")
+    print(f"\n[EVAL] === {scenario_name} Results - Epoch {epoch_str} - {model_str} ===")
     print(f"  mAP@0.5:      {overall['mAP_50']:.4f}")
     print(f"  mAP@0.5:0.95: {overall['mAP_50_95']:.4f}")
     print(f"  Precision:     {overall['precision']:.4f}")
