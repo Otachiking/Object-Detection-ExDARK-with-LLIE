@@ -13,6 +13,7 @@ import os
 import json
 import torch
 import pandas as pd
+import datetime
 from typing import Dict, Optional
 from ultralytics import YOLO
 
@@ -175,7 +176,8 @@ def evaluate_yolo(
         print(f"[EVAL] Per-class CSV: {csv_path}")
 
     # Print summary
-    print(f"\n[EVAL] === {scenario_name} Results - Epoch {epoch_str} - {model_str} ===")
+    timestamp_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[EVAL - {timestamp_str}] === {scenario_name} Results - Epoch {epoch_str} - {model_str} ===")
     print(f"  mAP@0.5:      {overall['mAP_50']:.4f}")
     print(f"  mAP@0.5:0.95: {overall['mAP_50_95']:.4f}")
     print(f"  Precision:     {overall['precision']:.4f}")
