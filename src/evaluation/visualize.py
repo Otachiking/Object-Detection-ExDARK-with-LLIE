@@ -205,7 +205,7 @@ def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir,
 
     n = len(sample_imgs)
     fig, axes = plt.subplots(n, 2, figsize=(14, 4.0 * n), gridspec_kw={"wspace": 0.05, "hspace": 0.20})
-    fig.suptitle(f"Detection Results — {scenario_name}\\nLeft: Ground Truth  |  Right: Prediction (conf >= 0.25)", fontsize=16, fontweight="bold", y=0.94)
+    fig.suptitle(f"Detection Results — {scenario_name}\\nLeft: Prediction (conf ≥ 0.25)  |  Right: Ground Truth", fontsize=16, fontweight="bold", y=0.94)
     if n == 1: axes = axes.reshape(1, 2)
     fig.subplots_adjust(top=0.90)
     
@@ -214,21 +214,21 @@ def plot_detection_results(weights_path, test_img_dir, test_lbl_dir, output_dir,
         img = mpimg.imread(img_path)
         h, w = img.shape[:2]
         
-        # GT
+        # Pred — kolom kiri (0)
+        pred = model.predict(img_path, conf=0.25, verbose=False)
         axes[idx, 0].imshow(img, aspect="equal")
-        lbl = os.path.join(test_lbl_dir, os.path.splitext(fname)[0] + ".txt")
-        _draw_boxes(axes[idx, 0], _parse_gt(lbl, h, w), mode="gt")
-        axes[idx, 0].set_title(f"GT: {fname}", fontsize=9, loc="left")
+        _draw_boxes(axes[idx, 0], _parse_pred(pred), mode="pred")
+        axes[idx, 0].set_title(f"Pred: {fname}", fontsize=9, loc="left")
         axes[idx, 0].axis("off")
         
-        # Pred
+        # GT — kolom kanan (1)
+        lbl = os.path.join(test_lbl_dir, os.path.splitext(fname)[0] + ".txt")
         axes[idx, 1].imshow(img, aspect="equal")
-        pred = model.predict(img_path, conf=0.25, verbose=False)
-        _draw_boxes(axes[idx, 1], _parse_pred(pred), mode="pred")
-        axes[idx, 1].set_title(f"Pred: {fname}", fontsize=9, loc="left")
+        _draw_boxes(axes[idx, 1], _parse_gt(lbl, h, w), mode="gt")
+        axes[idx, 1].set_title(f"GT: {fname}", fontsize=9, loc="left")
         axes[idx, 1].axis("off")
         
-    save_path = os.path.join(output_dir, "detection_samples_gt_vs_pred.png")
+    save_path = os.path.join(output_dir, "detection_samples_pred_vs_gt.png")
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved -> {save_path}")

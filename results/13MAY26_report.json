@@ -1,0 +1,134 @@
+{
+  "report_metadata": {
+    "date": "2026-05-13",
+    "author": "Iqbal",
+    "project": "Object Detection on ExDARK with LLIE (YOLOv11)"
+  },
+  "training_configurations": {
+    "model": "yolo11n.pt",
+    "img_size": 640,
+    "epochs": 50,
+    "batch_size": 16,
+    "optimizer": "AdamW",
+    "learning_rate_initial": 0.005,
+    "weight_decay": 0.001,
+    "augmentations": {
+      "mosaic": 1.0,
+      "mixup": 0.2,
+      "erasing": 0.2,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4
+    },
+    "validation": {
+      "conf_threshold": 0.001,
+      "iou_threshold": 0.7
+    }
+  },
+  "scenarios_results": {
+    "S1_Raw": {
+      "nr_metrics": {
+        "NIQE": 5.1770,
+        "BRISQUE": 31.1362,
+        "LOE": null
+      },
+      "spatial_metrics": {
+        "shadow_area": "66.10%",
+        "mean_luminance": 33.69,
+        "rms_contrast": 35.17,
+        "noise_sigma": 4.515,
+        "epi": 1.0000,
+        "edge_density": "4.28%"
+      },
+      "yolo_evaluation": {
+        "mAP@0.5": 0.5576,
+        "mAP@0.5:0.95": 0.3309,
+        "precision": 0.6312,
+        "recall": 0.5146
+      },
+      "latency_flops": {
+        "t_enhance_ms": 0.00,
+        "t_detect_ms": 13.68,
+        "total_gflops": 3.2262
+      }
+    },
+    "S2_HVI_CIDNet": {
+      "nr_metrics": {
+        "NIQE": 3.9159,
+        "BRISQUE": 25.7430,
+        "LOE": 6.2178
+      },
+      "spatial_metrics": {
+        "shadow_area": "11.64%",
+        "mean_luminance": 114.59,
+        "rms_contrast": 61.02,
+        "noise_sigma": 7.427,
+        "epi": 0.2004,
+        "edge_density": "11.21%"
+      },
+      "yolo_evaluation": {
+        "mAP@0.5": 0.5491,
+        "mAP@0.5:0.95": 0.3253,
+        "precision": 0.6153,
+        "recall": 0.5173
+      },
+      "latency_flops": {
+        "t_enhance_ms": 100.53,
+        "t_detect_ms": 13.50,
+        "total_gflops": 18.6262
+      }
+    },
+    "S3_RetinexFormer": {
+      "nr_metrics": {
+        "NIQE": 3.9408,
+        "BRISQUE": 17.1748,
+        "LOE": 6.8211
+      },
+      "spatial_metrics": {
+        "shadow_area": "21.61%",
+        "mean_luminance": 92.41,
+        "rms_contrast": 56.49,
+        "noise_sigma": 6.833,
+        "epi": 0.2396,
+        "edge_density": "9.25%"
+      },
+      "yolo_evaluation": {
+        "mAP@0.5": 0.5361,
+        "mAP@0.5:0.95": 0.3181,
+        "precision": 0.5927,
+        "recall": 0.5130
+      },
+      "latency_flops": {
+        "t_enhance_ms": 356.29,
+        "t_detect_ms": 13.85,
+        "total_gflops": 60.0262
+      }
+    },
+    "S4_LYT_Net": {
+      "nr_metrics": {
+        "NIQE": 4.3292,
+        "BRISQUE": 26.4130,
+        "LOE": 4.4619
+      },
+      "spatial_metrics": {
+        "shadow_area": "13.65%",
+        "mean_luminance": 96.88,
+        "rms_contrast": 57.83,
+        "noise_sigma": 7.136,
+        "epi": 0.2696,
+        "edge_density": "9.14%"
+      },
+      "yolo_evaluation": {
+        "mAP@0.5": 0.5365,
+        "mAP@0.5:0.95": 0.3184,
+        "precision": 0.6165,
+        "recall": 0.5017
+      },
+      "latency_flops": {
+        "t_enhance_ms": 101.67,
+        "t_detect_ms": 14.07,
+        "total_gflops": 18.1262
+      }
+    }
+  }
+}
