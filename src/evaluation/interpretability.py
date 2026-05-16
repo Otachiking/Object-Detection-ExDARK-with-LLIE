@@ -52,8 +52,9 @@ def _compute_eigencam(tensor: torch.Tensor, target_size=(640, 640)) -> np.ndarra
 
     saliency = pc1.reshape(H, W)
 
-    # Clamp negatif (hanya area aktivasi positif)
-    saliency = np.maximum(saliency, 0)
+    # JANGAN clamp negatif — PC1 bisa dominan negatif.
+    # Gunakan nilai absolut agar seluruh rentang signed projection terwakili.
+    saliency = np.abs(saliency)
     saliency = saliency - np.min(saliency)
     saliency = saliency / (np.max(saliency) + 1e-7)
     saliency_uint8 = np.uint8(255 * saliency)
@@ -116,15 +117,15 @@ def generate_and_plot_yolo_vision(
     # Setiap baris = 1 gambar, 4 panel berdampingan
     NCOLS = 4
     fig = plt.figure(figsize=(NCOLS * 5.5, n_imgs * 5.5))
-    fig.patch.set_facecolor('#1a1a2e')
+    fig.patch.set_facecolor('white')
 
     fig.suptitle(
         f"YOLO Interpretability — {scenario_name}\n"
         f"[Original]  [Layer 0: Mean Act. (Edge)]  "
         f"[Layer N: Mean Act. (Semantic)]  [Layer N: EigenCAM (PC1)]",
-        fontsize=13,
+        fontsize=14,
         fontweight='bold',
-        color='white',
+        color='black',
         y=1.01,
     )
 
@@ -183,7 +184,7 @@ def generate_and_plot_yolo_vision(
         ax0.imshow(ori_rgb)
         ax0.set_title(
             f"[{scenario_name}] {img_name}",
-            fontsize=8, color='white', pad=4, fontweight='bold',
+            fontsize=11, color='black', pad=4, fontweight='bold',
         )
         ax0.axis('off')
         _style_ax(ax0)
@@ -195,10 +196,10 @@ def generate_and_plot_yolo_vision(
             overlay0 = _blend_overlay(ori_rgb, hmap0)
             ax1.imshow(overlay0)
         else:
-            ax1.set_facecolor('#0d0d1a')
+            ax1.set_facecolor('white')
             ax1.text(0.5, 0.5, "No activation", ha='center', va='center',
                      color='gray', transform=ax1.transAxes)
-        ax1.set_title("Layer 0\nMean Activation (Edge)", fontsize=8, color='#82aaff', pad=4)
+        ax1.set_title("Layer 0\nMean Activation (Edge)", fontsize=11, color='black', pad=4)
         ax1.axis('off')
         _style_ax(ax1)
 
@@ -209,10 +210,10 @@ def generate_and_plot_yolo_vision(
             overlayN = _blend_overlay(ori_rgb, hmapN)
             ax2.imshow(overlayN)
         else:
-            ax2.set_facecolor('#0d0d1a')
+            ax2.set_facecolor('white')
             ax2.text(0.5, 0.5, "No activation", ha='center', va='center',
                      color='gray', transform=ax2.transAxes)
-        ax2.set_title("Layer N\nMean Activation (Semantic)", fontsize=8, color='#c3e88d', pad=4)
+        ax2.set_title("Layer N\nMean Activation (Semantic)", fontsize=11, color='black', pad=4)
         ax2.axis('off')
         _style_ax(ax2)
 
@@ -223,10 +224,10 @@ def generate_and_plot_yolo_vision(
             eigen_overlay = _blend_overlay(ori_rgb, eigen_map)
             ax3.imshow(eigen_overlay)
         else:
-            ax3.set_facecolor('#0d0d1a')
+            ax3.set_facecolor('white')
             ax3.text(0.5, 0.5, "No activation", ha='center', va='center',
                      color='gray', transform=ax3.transAxes)
-        ax3.set_title("Layer N\nEigenCAM (PC1 Projection)", fontsize=8, color='#ffcb6b', pad=4)
+        ax3.set_title("Layer N\nEigenCAM (PC1 Projection)", fontsize=11, color='black', pad=4)
         ax3.axis('off')
         _style_ax(ax3)
 
@@ -248,8 +249,8 @@ def generate_and_plot_yolo_vision(
 
 
 def _style_ax(ax):
-    """Styling gelap untuk axis (agar border terlihat bersih)."""
+    """Styling terang untuk axis (white background, border abu-abu tipis)."""
     for spine in ax.spines.values():
-        spine.set_edgecolor('#333355')
+        spine.set_edgecolor('#cccccc')
         spine.set_linewidth(0.5)
-    ax.set_facecolor('#0d0d1a')
+    ax.set_facecolor('white')

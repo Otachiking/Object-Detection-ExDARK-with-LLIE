@@ -1,0 +1,286 @@
+% ============================================================
+% referensi.bib — Generated from Referensi.txt label list
+% Label mapping: [A]-[AJ] → descriptive BibTeX keys
+% WARNING: Entries marked with NOTE need DOI/volume/page
+%          verification from the actual PDF before submission.
+% ============================================================
+
+% [A] Akavaram, S. (2025)
+@article{akavaram2025flops,
+  author  = {Akavaram, Srikesh},
+  title   = {Optimizing AI Performance at Scale: A FLOPs-Centric Framework for Efficient Deep Learning},
+  year    = {2025},
+}
+
+% [B] Brateanu, A., et al. (2025)
+@article{brateanu2025lytnet,
+  author  = {Brateanu, Alexandru and others},
+  title   = {{LYT-NET}: Lightweight {YUV} Transformer-Based Network for Low-Light Image Enhancement},
+  year    = {2025},
+}
+
+% [C] Cai, Y., et al. (2023)
+@inproceedings{cai2023retinexformer,
+  author    = {Cai, Yufei and others},
+  title     = {Retinexformer: One-stage Retinex-based Transformer for Low-light Image Enhancement},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2023},
+}
+
+% [D] Chobola, T., et al. (2024)
+@article{chobola2024fastllie,
+  author  = {Chobola, Tomas and others},
+  title   = {Fast Context-Based Low-Light Image Enhancement via Neural Implicit Representations},
+  year    = {2024},
+}
+
+% [E] Darmawan, I., et al. (2025)
+@article{darmawan2025vitra,
+  author  = {Darmawan, Irfan and others},
+  title   = {{ViTRA}: Vision Transformer With Relative Position Embedding Attention for Low-Light Image Quality Improvement},
+  year    = {2025},
+}
+
+% [F] Davis, J., & Goadrich, M. (2006)
+@inproceedings{davis2006prroc,
+  author    = {Davis, Jesse and Goadrich, Mark},
+  title     = {The relationship between Precision-Recall and {ROC} curves},
+  booktitle = {Proceedings of the 23rd International Conference on Machine Learning (ICML)},
+  year      = {2006},
+}
+
+% [G] Dobrzycki, A., et al. (2025)
+@article{dobrzycki2025freezing,
+  author  = {Dobrzycki, Adam and others},
+  title   = {An Analysis of Layer-Freezing Strategies for Enhanced Transfer Learning in {YOLO} Architectures},
+  year    = {2025},
+}
+
+% [H] Elgendy, M. (2020)
+@book{elgendy2020deeplearning,
+  author    = {Elgendy, Mohamed},
+  title     = {Deep Learning for Vision Systems},
+  publisher = {Manning Publications},
+  year      = {2020},
+}
+
+% [I] Gong, B., et al. (2025)
+@article{gong2025multiscale,
+  author  = {Gong, Bo and others},
+  title   = {Enhancing real-time low-light object detection via multi-scale edge and illumination-guided features in {YOLOv8}},
+  year    = {2025},
+}
+
+% [J] Gries, D., & Hazzan, O.
+@book{gries_hazzan_cs,
+  author    = {Gries, David and Hazzan, Orit},
+  title     = {Texts in Computer Science},
+  publisher = {Springer},
+}
+
+% [K] Hong, Y. (2021)
+@inproceedings{hong2021lowlight,
+  author    = {Hong, Yoonsik},
+  title     = {Crafting Object Detection in Very Low Light},
+  booktitle = {British Machine Vision Conference (BMVC)},
+  year      = {2021},
+}
+
+% [L] Khanam, R., & Hussain, M. (2024)
+@article{khanam2024yolov11,
+  author  = {Khanam, Rahima and Hussain, Muhammad},
+  title   = {{YOLOv11}: An Overview of the Key Architectural Enhancements},
+  year    = {2024},
+}
+
+% [M] Liang, S., et al. (2022)
+@article{liang2022edgeyolo,
+  author  = {Liang, Siyuan and others},
+  title   = {Edge {YOLO}: Real-Time Intelligent Object Detection System Based on Edge-Cloud Cooperation in Autonomous Vehicles},
+  year    = {2022},
+}
+
+% [N] Lin, T.-Y., et al. (2014)
+@inproceedings{lin2014coco,
+  author    = {Lin, Tsung-Yi and others},
+  title     = {{Microsoft COCO}: Common Objects in Context},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year      = {2014},
+}
+
+% [O] Liu, J., et al. (2021)
+@article{liu2021benchmark,
+  author  = {Liu, Jiaying and Xu, Dejia and Yang, Wenhan and Fan, Minhao and Huang, Haofeng},
+  title   = {Benchmarking Low-Light Image Enhancement and Beyond},
+  journal = {International Journal of Computer Vision},
+  volume  = {129},
+  number  = {4},
+  pages   = {1153--1184},
+  year    = {2021},
+}
+
+% [P] Loh, Y. P., & Chan, C. S. (2019)
+@article{loh2019exdark,
+  author  = {Loh, Yuen Peng and Chan, Chee Seng},
+  title   = {Getting to know low-light images with the {Exclusively Dark} dataset},
+  journal = {Computer Vision and Image Understanding},
+  volume  = {178},
+  pages   = {30--42},
+  year    = {2019},
+}
+
+% [Q] Loshchilov, I., & Hutter, F. (2017)
+@inproceedings{loshchilov2017sgdr,
+  author    = {Loshchilov, Ilya and Hutter, Frank},
+  title     = {{SGDR}: Stochastic Gradient Descent with Warm Restarts},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2017},
+}
+
+% [R] Mpouziotas, D., et al. (2022)
+@inproceedings{mpouziotas2022lowlight,
+  author    = {Mpouziotas, Dimitris and others},
+  title     = {Object Detection for Low Light Images},
+  year      = {2022},
+}
+
+% [S] Oishi, et al. (2021)
+@article{oishi2021network,
+  author  = {Oishi and others},
+  title   = {A study on interconnection between local {5G} networks and existing networks},
+  year    = {2021},
+}
+
+% [T] Padilla, R., et al. (2021)
+@article{padilla2021metrics,
+  author  = {Padilla, Rafael and others},
+  title   = {A Comparative Analysis of Object Detection Metrics with a Companion Open-Source Toolkit},
+  journal = {Electronics},
+  year    = {2021},
+}
+
+% [U] Peng, D., et al. (2024)
+@article{peng2024yolov5llie,
+  author  = {Peng, Dao and others},
+  title   = {A novel low light object detection method based on the {YOLOv5} fusion feature enhancement},
+  year    = {2024},
+}
+
+% [V] Redmon, J., et al. (2016)
+@inproceedings{redmon2016yolo,
+  author    = {Redmon, Joseph and others},
+  title     = {You Only Look Once: Unified, Real-Time Object Detection},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2016},
+}
+
+% [W] Sapkota, R., et al. (2025)
+@article{sapkota2025yoloreview,
+  author  = {Sapkota, Raj and others},
+  title   = {{YOLO} advances to its genesis: a decadal and comprehensive review of the You Only Look Once ({YOLO}) series},
+  year    = {2025},
+}
+
+% [X] Shovo, S. U. A., et al. (2024)
+@article{shovo2024lowlight,
+  author  = {Shovo, S. U. A. and others},
+  title   = {Advancing low-light object detection with you only look once models: An empirical study and performance evaluation},
+  journal = {Cognitive Computation and Systems},
+  volume  = {6},
+  number  = {4},
+  pages   = {119--134},
+  year    = {2024},
+}
+
+% [Y] Terven, J., et al. (2023)
+@article{terven2023yoloreview,
+  author  = {Terven, Juan and Cordova-Esparza, Diana},
+  title   = {A Comprehensive Review of {YOLO} Architectures in Computer Vision: From {YOLOv1} to {YOLOv8} and {YOLO-NAS}},
+  journal = {Machine Learning and Knowledge Extraction},
+  volume  = {5},
+  number  = {4},
+  pages   = {1680--1716},
+  year    = {2023},
+}
+
+% [Z] Wang, J., et al. (2023)
+@article{wang2023yolov5lowlight,
+  author  = {Wang, Jian and others},
+  title   = {Research on Improved {YOLOv5} for Low-Light Environment Object Detection},
+  year    = {2023},
+}
+
+% [AA] Wong, A., et al. (2019)
+@inproceedings{wong2019yolonano,
+  author    = {Wong, Alexander and others},
+  title     = {{YOLO Nano}: a Highly Compact You Only Look Once Convolutional Neural Network for Object Detection},
+  year      = {2019},
+}
+
+% [AB] Wu, et al. (2023)
+@article{wu2023edgecomputing,
+  author  = {Wu and others},
+  title   = {Edge Computing Driven Low-Light Image Dynamic Enhancement for Object Detection},
+  year    = {2023},
+}
+
+% [AC] Wu, X., et al. (2024)
+@article{wu2024llieeffect,
+  author  = {Wu, Xinyue and others},
+  title   = {Low-Light Enhancement Effect on Classification and Detection: An Empirical Study},
+  year    = {2024},
+}
+
+% [AD] Yan, Q., et al. (2025) — HVI Color Space paper (CIDNet basis)
+@article{yan2025hvi,
+  author  = {Yan, Qingsen and others},
+  title   = {{HVI}: A New Color Space for Low-light Image Enhancement},
+  year    = {2025},
+}
+
+% [AE] Yan, Q., et al. (2025) — HVI-CIDNet+
+@inproceedings{yan2025hvicidnet,
+  author    = {Yan, Qingsen and others},
+  title     = {{HVI-CIDNet+}: Beyond Extreme Darkness for Low-Light Image Enhancement},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2025},
+}
+
+% [AF] Zhang, Y., et al. (2025)
+@article{zhang2025hvifusion,
+  author  = {Zhang, Yue and others},
+  title   = {{HVI}-Based Spatial--Frequency-Domain Multi-Scale Fusion for Low-Light Image Enhancement},
+  year    = {2025},
+}
+
+% [AG] Zhao, et al. (2025)
+@article{zhao2025lightweight,
+  author  = {Zhao and others},
+  title   = {A Lightweight Multi-Stage Visual Detection Approach for Complex Traffic Scenes},
+  year    = {2025},
+}
+
+% [AH] Internal report — cite as unpublished/techreport
+@techreport{report2026internal,
+  author      = {Rasyid, Muhammad Iqbal},
+  title       = {Laporan Evaluasi: Peningkatan Citra Berbasis {HVI-CIDNet} untuk Deteksi Objek Low-Light pada ExDark dengan {YOLOv11}},
+  institution = {Telkom University},
+  year        = {2026},
+  note        = {Internal Evaluation Report, 13 May 2026},
+}
+
+% [AI] Proposal Sempro — cite as unpublished
+@unpublished{proposal2026sempro,
+  author = {Rasyid, Muhammad Iqbal},
+  title  = {Evaluasi Peningkatan Citra Berbasis {HVI-CIDNet} untuk Deteksi Objek Low-Light pada ExDark dengan {YOLOv11}},
+  note   = {Seminar Proposal, Telkom University},
+  year   = {2026},
+}
+
+% [AJ] Rumus Metrics / Interpretability formulas — cite as unpublished technical note
+@unpublished{metrics2026formulas,
+  author = {Rasyid, Muhammad Iqbal},
+  title  = {Rumus Metrik Evaluasi: Interpretabilitas dan Visualisasi Model Deteksi Objek},
+  note   = {Technical formulation document, Telkom University},
+  year   = {2026},
+}

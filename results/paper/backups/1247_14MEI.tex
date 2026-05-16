@@ -1,0 +1,99 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Evaluasi Peningkatan Citra Berbasis HVI-CIDNet untuk Deteksi Objek Low-Light pada ExDark dengan YOLOv11}
+
+\author{\IEEEauthorblockN{Muhammad Iqbal Rasyid}
+\IEEEauthorblockA{\textit{Dept. of Informatics} \\
+\textit{Telkom University}\\
+Bandung, Indonesia \\
+otachiking@student.telkomuniversity.ac.id}
+}
+
+\maketitle
+
+\begin{abstract}
+Kualitas citra pada kondisi minim cahaya (low-light) menjadi tantangan besar untuk tugas deteksi objek dalam visi komputer. Sinyal lemah yang ditangkap oleh sensor kamera mengakibatkan tingkat derau (noise) yang tinggi dan kontras yang rendah, sehingga menyulitkan model deteksi untuk mengenali fitur objek dengan baik. Untuk mengatasi tantangan tersebut, penelitian ini mengevaluasi integrasi metode peningkatan citra (image enhancement) berbasis Color and Intensity Decoupling Network (CIDNet) yang beroperasi pada ruang warna HVI, dengan arsitektur deteksi objek mutakhir, YOLOv11. Evaluasi dilakukan menggunakan dataset Exclusively Dark (ExDark) yang mencakup 12 kelas objek dalam berbagai kondisi pencahayaan minim nyata. Hasil dari penelitian ini diharapkan dapat memberikan wawasan empiris mengenai seberapa besar pengaruh pra-pemrosesan HVI-CIDNet terhadap peningkatan akurasi metrik mean Average Precision (mAP) dari model YOLOv11.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Low-Light Image Enhancement, Object Detection, HVI-CIDNet, YOLOv11, ExDark
+\end{IEEEkeywords}
+
+\section{Introduction}
+Kinerja algoritma deteksi objek telah mengalami kemajuan pesat dalam dekade terakhir, terutama dengan hadirnya keluarga model \textit{You Only Look Once} (YOLO) \cite{yolo_review}. Meskipun model-model ini menunjukkan performa luar biasa pada citra dengan pencahayaan normal, akurasi deteksi seringkali menurun drastis ketika diterapkan pada citra dengan kondisi minim cahaya (\textit{low-light}). Tantangan utama pada citra \textit{low-light} meliputi visibilitas yang buruk, kontras yang sangat rendah, dan hilangnya detail penting akibat tingginya tingkat \textit{noise} bawaan sensor kamera \cite{exdark}.
+
+Untuk mengatasi masalah ini, pendekatan \textit{Low-Light Image Enhancement} (LLIE) sering digunakan sebagai langkah pra-pemrosesan (\textit{preprocessing}) sebelum citra dimasukkan ke dalam model deteksi \cite{llie_benchmark}. Baru-baru ini, pendekatan berbasis \textit{Color and Intensity Decoupling Network} (CIDNet) yang dikombinasikan dengan ruang warna spesifik HVI (Hue, Value, Illumination) telah menunjukkan kemampuan luar biasa dalam memulihkan kecerahan citra sekaligus menekan \textit{noise} tanpa merusak struktur warna asli \cite{hvi_cidnet}. 
+
+Di sisi lain, YOLOv11 hadir sebagai arsitektur deteksi objek sekali-jalan (\textit{one-stage detector}) terbaru yang menawarkan keseimbangan optimal antara kecepatan komputasi dan akurasi (mAP). Namun, penelitian yang mengevaluasi dampak metode LLIE tingkat lanjut seperti HVI-CIDNet terhadap performa prediksi \textit{bounding box} YOLOv11 pada lingkungan gelap ekstrem masih sangat terbatas.
+
+Berdasarkan latar belakang tersebut, penelitian ini bertujuan untuk mengevaluasi secara komprehensif pengaruh peningkatan citra menggunakan HVI-CIDNet terhadap kinerja deteksi objek YOLOv11. Dataset \textit{Exclusively Dark} (ExDark) dipilih sebagai basis pengujian karena representasinya yang kuat terhadap skenario pencahayaan rendah di dunia nyata.
+
+\section{Related Work}
+
+\subsection{Low-Light Image Enhancement (LLIE) dan HVI-CIDNet}
+Metode LLIE bertujuan untuk meningkatkan visibilitas gambar yang diambil di bawah kondisi iluminasi suboptimal. Secara tradisional, teknik seperti \textit{Histogram Equalization} (HE) dan modifikasi kurva Gamma digunakan, namun metode ini kerap menghasilkan \textit{over-enhancement} dan artefak warna \cite{llie_benchmark}. 
+
+Perkembangan \textit{deep learning} mendorong munculnya model berbasis \textit{Convolutional Neural Networks} (CNN) dan \textit{Transformer} untuk LLIE. HVI-CIDNet merupakan salah satu pengembangan terkini yang memisahkan pemrosesan warna dan intensitas cahaya menggunakan ruang warna HVI \cite{hvi_cidnet}. Ruang warna ini terbukti lebih adaptif terhadap degradasi citra gelap dibandingkan RGB atau HSV. Dengan melakukan pemisahan (\textit{decoupling}), jaringan dapat memfokuskan ekstraksi fitur spasial untuk memulihkan detail tanpa mendistorsi informasi kromatik.
+
+
+\subsection{Deteksi Objek dan YOLOv11}
+Keluarga algoritma YOLO beroperasi dengan memformulasikan deteksi objek sebagai masalah regresi tunggal, langsung dari piksel citra ke koordinat \textit{bounding box} dan probabilitas kelas kelas \cite{yolo_review}. YOLOv11 merupakan iterasi paling modern yang membawa pembaruan pada desain \textit{backbone} untuk efisiensi komputasi, serta modul \textit{neck} dan \textit{head} yang lebih responsif terhadap variasi skala objek. Dalam konteks \textit{low-light}, tantangan bagi YOLOv11 adalah ekstraksi peta fitur (\textit{feature maps}) yang terdegradasi oleh piksel gelap, yang dapat mengakibatkan hilangnya objek-objek kecil (false negatives) \cite{yolo_lowlight}.
+
+\subsection{Dataset Exclusively Dark (ExDark)}
+ExDark adalah dataset komprehensif yang dirancang khusus untuk penelitian deteksi objek dan peningkatan citra pada lingkungan gelap \cite{exdark}. Dataset ini terdiri dari ribuan gambar yang mencakup 12 kategori kelas (seperti sepeda, mobil, kucing, anjing, dan manusia) dalam 10 kondisi pencahayaan rendah yang berbeda (mulai dari cahaya temaram, malam hari, hingga sangat gelap). Penggunaan dataset ini sangat ideal untuk memvalidasi efektivitas pra-pemrosesan HVI-CIDNet secara empiris.
+
+% ================================================================= %
+% BERIKUT ADALAH LAYOUT UNTUK BAB-BAB SELANJUTNYA %
+% ================================================================= %
+
+\section{Metodologi Penelitian}
+% Nanti bisa diisi dengan diagram blok sistem
+% Contoh cara memasukkan gambar:
+% \begin{figure}[htbp]
+% \centerline{\includegraphics[width=\columnwidth]{diagram_sistem.png}}
+% \caption{Diagram Alir Penelitian: Integrasi HVI-CIDNet dan YOLOv11.}
+% \label{fig_metodologi}
+% \end{figure}
+
+\subsection{Alur Sistem}
+(Isi dengan penjelasan tahapan: Dataset Preparation -> LLIE Processing dengan HVI-CIDNet -> Training/Inference YOLOv11 -> Evaluasi)
+
+\subsection{Metrik Evaluasi}
+(Isi dengan penjelasan Mean Average Precision (mAP), Precision, Recall, serta metrik kualitas spasial citra seperti NIQE atau BRISQUE).
+
+\section{Hasil dan Pembahasan}
+
+\subsection{Analisis Kualitas Citra (Spatial Metrics)}
+(Isi dengan hasil evaluasi gambar yang sudah di-enhance oleh HVI-CIDNet)
+
+\subsection{Kinerja Deteksi Objek (mAP YOLOv11)}
+(Isi dengan perbandingan performa YOLOv11 antara dataset asli ExDark vs dataset yang sudah di-enhance).
+
+\section{Kesimpulan dan Saran}
+
+\subsection{Kesimpulan}
+(Isi dengan rangkuman hasil temuan)
+
+\subsection{Saran}
+(Isi dengan kemungkinan riset selanjutnya)
+
+\section*{Ucapan Terima Kasih}
+(Opsional) Penulis mengucapkan terima kasih kepada pembimbing Tugas Akhir, Dr. Gamma Kosala, S.Si., atas arahan dan bimbingan yang diberikan selama penyusunan proposal ini.
+
+\bibliographystyle{IEEEtran}
+\bibliography{referensi} % Memanggil file referensi.bib
+
+\end{document}

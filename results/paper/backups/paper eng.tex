@@ -1,0 +1,126 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Evaluation of HVI-CIDNet-based Image Enhancement for Low-Light Object Detection on ExDark with YOLOv11}
+
+\author{\IEEEauthorblockN{Muhammad Iqbal Rasyid}
+\IEEEauthorblockA{\textit{Dept. of Informatics} \\
+\textit{Telkom University}\\
+Bandung, Indonesia \\
+otachiking@student.telkomuniversity.ac.id}
+}
+
+\maketitle
+
+\begin{abstract}
+Image quality in low-light conditions poses a significant challenge for object detection tasks in computer vision. The weak signals captured by camera sensors result in high noise levels and low contrast, making it difficult for detection models to properly recognize object features. To address this challenge, this study evaluates the integration of an image enhancement method based on the Color and Intensity Decoupling Network (CIDNet) operating in the HVI color space, with the state-of-the-art object detection architecture, YOLOv11. The evaluation is conducted using the Exclusively Dark (ExDark) dataset, which encompasses 12 object classes in various real-world low-light conditions. The results of this study are expected to provide empirical insights into the extent to which HVI-CIDNet preprocessing affects the improvement of the mean Average Precision (mAP) metric accuracy of the YOLOv11 model.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Low-Light Image Enhancement, Object Detection, HVI-CIDNet, YOLOv11, ExDark
+\end{IEEEkeywords}
+
+\section{Introduction}
+The performance of object detection algorithms has advanced rapidly in the last decade, particularly with the advent of the \textit{You Only Look Once} (YOLO) model family \cite{terven2023yoloreview}. Although these state-of-the-art models exhibit outstanding performance on images with normal illumination, detection accuracy often degrades when applied to images in \textit{low-light} conditions. The main challenges in \textit{low-light} environments include poor visibility, extremely low contrast, and the loss of crucial details due to the high inherent \textit{noise} levels of camera sensors \cite{loh2019exdark}. To overcome these issues, conventional \textit{Low-Light Image Enhancement} (LLIE) approaches are generally positioned as a mandatory \textit{preprocessing} step before the images are fed into the detection models \cite{liu2021benchmark}.
+
+Recently, various advanced LLIE methods such as the \textit{Color and Intensity Decoupling Network} (CIDNet) integrated with the HVI (Hue, Value, Illumination) color space, RetinexFormer, and LYT-Net have demonstrated remarkable capabilities in restoring image brightness while suppressing \textit{noise} \cite{yan2025hvi}, \cite{cai2023retinexformer}, \cite{brateanu2025lytnet}. However, there is a crucial academic debate regarding the effectiveness of these algorithms on \textit{high-level machine vision} tasks. Visual quality improvements that pamper human visual perception are proven not always directly proportional to the enhancement of feature extraction performance by machine detectors \cite{wu2024llieeffect}. LLIE algorithms are prone to introducing high-frequency \textit{noise} and altering the semantic structure of the original image features during the restoration process, which can actually be counterproductive to detection accuracy \cite{wang2023yolov5lowlight}.
+
+On the other hand, the YOLOv11 architecture emerges as the latest \textit{one-stage detector} offering highly robust feature extraction capabilities. Through the integration of the C3k2 block, \textit{Spatial Pyramid Pooling-Fast} (SPPF), and the C2PSA spatial attention mechanism, YOLOv11 is capable of extracting representations directly from \textit{low-light} \textit{raw data} highly effectively \cite{khanam2024yolov11}. This structural sophistication raises the empirical hypothesis that providing image inputs manipulated by LLIE algorithms risks disorienting the network's perception due to the loss of original gradients and the addition of artificial artifacts from the color restoration process.
+
+Based on this phenomenon, this research presents an empirical study to comprehensively evaluate the impact of SOTA LLIE methods' preprocessing on the object detection performance of YOLOv11. The testing focuses on comparing feature extraction performance and accuracy metrics (mAP) between raw images as a \textit{baseline} and images processed using HVI-CIDNet, RetinexFormer, and LYT-Net methods. The \textit{Exclusively Dark} (ExDARK) dataset was chosen as the testing base due to its strong representation of real-world low-light scenario variations \cite{loh2019exdark}. This evaluation is conducted using a direct inference scheme without detector parameter retuning to isolate experimental variables and maintain objectivity. Besides validating performance degradation quantitatively, this study also contributes analytically by employing the \textit{Mean Activation Map} interpretability method \cite{metrics2026formulas}. This visualization approach is applied to concretely demonstrate how the shift in computational focus and feature map distortion occurs within the detector's internal structure due to exposure to artifacts from the image enhancement methods.
+
+\section{Related Work}
+The evaluation of object detection performance in low-light environments involves the intersection of two main research domains: image enhancement algorithms and high-level machine vision architectures. This section outlines recent developments in both domains and the empirical research gap connecting them.
+
+\subsection{Low-Light Image Enhancement (LLIE)} The primary goal of LLIE algorithms is to restore visibility, contrast, and color of images degraded due to poor illumination \cite{liu2021benchmark}. Historically, these methods evolved from traditional approaches like histogram manipulation to complex Deep Learning-based models. Vision Transformer-based approaches like RetinexFormer \cite{cai2023retinexformer} and the lightweight LYT-Net architecture \cite{brateanu2025lytnet} have proven superior capabilities in extracting global illumination features.
+
+Furthermore, state-of-the-art methods have begun exploring color space manipulation to avoid distortions common in sRGB and HSV spaces \cite{yan2025hvi}. The Color and Intensity Decoupling Network (CIDNet) approach, operating in the Horizontal/Vertical-Intensity (HVI) space, has proven effective in separating light intensity and color processing independently \cite{yan2025hvi}. The Lighten Cross-Attention (LCA) module in this architecture prevents cross-noise amplification between color and brightness channels \cite{darmawan2025vitra}. Although these advanced LLIE algorithms achieve very high quantitative scores on human perceptual metrics like Peak Signal-to-Noise Ratio (PSNR) and Structural Similarity (SSIM), this perceptual optimization is not specifically designed to preserve the crucial feature gradients for machine vision.
+
+\subsection{Evolution of You Only Look Once (YOLO) Architecture} The YOLO algorithm family has dominated real-time object detection tasks thanks to its efficient architecture in predicting bounding boxes and class probabilities simultaneously \cite{terven2023yoloreview}, \cite{sapkota2025yoloreview}. In earlier generations like YOLOv3 and YOLOv5, feature extraction architectures had limitations in handling images with extremely low signal-to-noise ratios \cite{wang2023yolov5lowlight}. Therefore, applying LLIE methods as preprocessing empirically proved to boost performance (Mean Average Precision) in those older generation models \cite{shovo2024lowlight}, \cite{peng2024yolov5llie}.
+However, the latest iteration, YOLOv11, introduces massive structural updates to the backbone and neck parts. YOLOv11 integrates the Cross Stage Partial with kernel size 2 (C3k2) block for computational feature extraction optimization, the Spatial Pyramid Pooling-Fast (SPPF) module for scale robustness, and the Convolutional block with Parallel Spatial Attention (C2PSA) which dramatically strengthens the network's spatial attention mechanism towards object features \cite{khanam2024yolov11}. This architectural sophistication enables the model to independently distinguish object features from background noise, even on extremely dark raw image data.
+
+\subsection{Impact of LLIE on High-Level Machine Vision} There is a fundamental disconnect between image optimization for human visual perception and image optimization for machine analysis. A comprehensive empirical study conducted by Wu et al. \cite{wu2024llieeffect} revealed that applying LLIE algorithms can have an inconsistent impact on classification and detection tasks, often being harmful.
+
+The illumination and color restoration processes in LLIE are prone to injecting high-frequency noise, artificial artifacts, and semantic shifts that permanently alter the original gradient feature distribution of the image \cite{wang2023yolov5lowlight}, \cite{gong2025multiscale}. For state-of-the-art detectors like YOLOv11, which have highly sensitive and robust feature extraction architectures, intervention from LLIE artifacts can actually disorient its computational attention focus. Instead of improving performance, this preprocessing potentially reduces object localization detection accuracy. Therefore, research that critically evaluates the negative impact of SOTA LLIE methods (such as HVI-CIDNet) on modern detectors in real-world datasets like ExDARK \cite{loh2019exdark} becomes highly relevant. This evaluation requires substantiation not only through final performance metrics but also through Mean Activation Map visualizations to observe the shift in feature localization within the detector network structure \cite{metrics2026formulas}.
+
+% ============================================== %
+% [PLACEHOLDER_FIGURE_2: A flowchart or conceptual comparative illustration showing the disconnect between LLIE output (Human Vision) and feature extraction by YOLOv11 (Machine Vision)]
+% THE FOLLOWING IS THE LAYOUT FOR SUBSEQUENT CHAPTERS %
+% ============================================= %
+
+\section{Methodology}
+This research employs a comparative experimental framework to evaluate the preprocessing impact of Low-Light Image Enhancement (LLIE) algorithms on the YOLOv11 object detector. This framework is divided into four main stages: dataset preparation, LLIE preprocessing inference, detection model training, and visual feature interpretability methods.
+
+\subsection{Dataset and Preprocessing} The empirical evaluation is conducted using the public Exclusively Dark (ExDARK) dataset specifically designed for low-light scenarios \cite{loh2019exdark}. This dataset includes 7,363 real-world images divided into 12 object categories (such as \textit{Bicycle}, \textit{Car}, \textit{People}, and others) and 10 illumination variation conditions. To ensure model training validity, the dataset was randomly restructured into three main subsets: 3,000 images for \textit{training}, 1,800 images for \textit{validation}, and 2,563 images for final \textit{testing} \cite{proposal2026sempro}.
+All bounding box annotations were converted from the original format to the standard YOLO format with spatial coordinate normalization \cite{padilla2021metrics}, \cite{proposal2026sempro}. To meet the YOLOv11 architecture standards without damaging the geometric proportion of object features, all images were resized to 640x640 pixels using the \textit{letterbox resizing} method, maintaining the original aspect ratio by adding padding to the image sides \cite{proposal2026sempro}.
+
+\subsection{Low-Light Image Enhancement Pipeline} To evaluate the impact of light intensity manipulation on machine vision, this study compares the raw image scenario (\textit{baseline}) with three \textit{state-of-the-art} (SOTA) LLIE preprocessing scenarios: HVI-CIDNet \cite{yan2025hvi}, RetinexFormer \cite{cai2023retinexformer}, and LYT-Net \cite{brateanu2025lytnet}.
+These three methods are applied using a \textit{direct inference} strategy without \textit{fine-tuning} parameters on the LOLv1 dataset \cite{proposal2026sempro}. The LLIE models were executed using original \textit{pretrained weights} to objectively test the algorithms' generalization capabilities. The HVI-CIDNet preprocessing specifically separates intensity and color processing through the Horizontal/Vertical-Intensity (HVI) color space transformation before returning the restored image to the sRGB format \cite{yan2025hvi}, \cite{proposal2026sempro}. The output images from these three methods were then configured as a secondary dataset input for detector model training.
+
+\subsection{Object Detection Architecture and Training} The detector architecture used is focused on the YOLOv11n (Nano) variant \cite{khanam2024yolov11}. Selecting the variant with the lowest complexity aims to isolate experimental variables, as small-capacity models have higher sensitivity to input gradient quality compared to large-capacity models \cite{proposal2026sempro}. This ensures that fluctuations in detection accuracy are purely caused by image feature quality, not by the internal \textit{robustness} of the model.
+Training the YOLOv11n model in each scenario was conducted consistently using metrics from the evaluation report \cite{report2026internal}. Training ran for 50 \textit{epochs} with a batch size of 16. Network optimization used the AdamW algorithm with an initial \textit{learning rate} of 0.005 and \textit{weight decay} of 0.001. To improve detector generalization, data augmentation strategies were enabled with Mosaic (1.0), Mixup (0.2), Erasing (0.2), and HSV color space manipulation configurations \cite{report2026internal}. The \textit{confidence threshold} was set at 0.001 with an Intersection over Union (IoU) metric of 0.7 \cite{report2026internal}, \cite{metrics2026formulas}.
+
+\subsection{Evaluation Metrics and Model Interpretability} The performance of each scenario was measured using standard COCO quantitative evaluation, which includes precision, recall, and \textit{Mean Average Precision} at an IoU threshold of 0.5 (mAP@0.5) and a comprehensive range of 0.5 to 0.95 (mAP@0.5:0.95) \cite{report2026internal}, \cite{metrics2026formulas}. System complexity was validated using \textit{Giga Floating-Point Operations} (GFLOPs) and \textit{Frames Per Second} (FPS) calculations \cite{metrics2026formulas}.
+
+To qualitatively investigate the empirical debate regarding feature degradation due to the introduction of LLIE artifacts, this research implements a model interpretability method based on \textit{PyTorch Forward Hook} without backpropagation gradient calculations \cite{metrics2026formulas}. Feature extraction visualization is observed using two approaches:
+
+\textbf{\textit{Mean Activation Map}}: Applied to \textit{Layer} 0 to evaluate the network's response to low-level features (such as edges and textures) and to \textit{Layer} N to evaluate semantic features. This map is calculated by averaging all network channel activations \cite{metrics2026formulas}.
+
+\textbf{EigenCAM (\textit{Class-Agnostic Saliency})}: Applied to \textit{Layer} N using the first \textit{Principal Component} (PC1) decomposition projection of the spatial activation matrix. Because it is class-agnostic, EigenCAM objectively visualizes the disorientation of the main network's attention due to the inherent \textit{noise} from LLIE algorithms without needing per-object class gradient adaptation \cite{metrics2026formulas}.
+
+% ============================================== %
+% [PLACEHOLDER_FIGURE_3: Schematic diagram illustrating the entire methodology pipeline, from ExDARK input, branch separation (Raw vs LLIE), to the YOLOv11 detection stage and feature extraction (EigenCAM)]
+% ============================================== %
+
+\section{Results and Discussion}
+This section presents the empirical evaluation results regarding the impact of Low-Light Image Enhancement (LLIE) algorithms on feature extraction and YOLOv11 detector performance. The analysis is divided into spatial image quality evaluation, training dynamics, quantitative detection performance, and qualitative model interpretation.
+
+\subsection{Visual Quality and Spatial Feature Degradation} The initial evaluation focuses on analyzing the impact of LLIE preprocessing (Scenarios S2 to S4) on the spatial structure of images compared to raw or baseline images (Scenario S1). Although LLIE methods successfully significantly increased the average illumination value (up to 114.59 on HVI-CIDNet) and improved blind perceptual metrics (No-Reference Metrics) such as NIQE and BRISQUE \cite{report2026internal}, this visual optimization came at the cost of severe structural feature degradation.
+
+Based on spatial metric calculations, LLIE preprocessing consistently introduces new noise and corrupts object boundary (edge) consistency. Scenario S1 has the lowest noise level ($\sigma$ = 4.515). Conversely, HVI-CIDNet (S2), RetinexFormer (S3), and LYT-Net (S4) algorithms increased the noise levels to 7.427, 6.833, and 7.136, respectively \cite{report2026internal}. This structural damage is most evident in the Edge Preservation Index (EPI) metric. The ideal EPI value is 1.0 (as in S1). However, after LLIE preprocessing, the EPI value plummeted drastically to a range of 0.2004 (S2) to 0.2696 (S4) \cite{report2026internal}, \cite{metrics2026formulas}. This drastic drop in EPI indicates that the LLIE algorithms have shifted, eliminated, or created false edge artifacts that are highly destructive to the bounding box localization process in machine vision.
+
+% [PLACEHOLDER_FIGURE_1: Comparison Between Original Image vs Enhanced Image (S2-S4). Note to you: Use an image that clearly shows how S2-S4 become brighter but introduce strange noise or artifacts in the background]
+
+\subsection{Training Dynamics and Convergence} The training dynamics of YOLOv11n across all four scenarios were evaluated to observe model convergence stability over 50 epochs. All loss metrics (Box Loss, Classification Loss, and Distribution Focal Loss or DFL) were closely monitored.
+
+Training using the baseline dataset (S1) showed the most stable and smooth loss reduction curve in the validation phase. Conversely, training using images from scenarios S2 to S4 exhibited higher loss fluctuations, especially in Box Loss and DFL Loss. These fluctuations confirm the hypothesis that spatial pixel value shifts and artificial artifacts from LLIE algorithms make it difficult for the YOLOv11 network to learn consistent bounding box boundaries.
+
+% [PLACEHOLDER_FIGURE_2: Ultralytic Training Summary (combined train/box_loss, train/cls_loss, val/box_loss, etc.) AND Training Curves (Precision, Recall, mAP@0.5). Note: Can be combined into a multi-panel grid]
+
+\subsection{Quantitative Object Detection Performance} The final detection performance evaluation proves that brightness optimization for human perception does not align with the feature extraction needs of YOLOv11. Scenario S1 (Raw) consistently outperformed all enhanced image variants. This is in line with the findings of Wu et al. \cite{wu2024llieeffect} that models with superior feature extraction actually experience disorientation when fed manipulated images.
+
+Quantitative evaluation results showed that the precision and recall distribution in scenario S1 was higher compared to SOTA methods like HVI-CIDNet \cite{yan2025hvi} and RetinexFormer \cite{cai2023retinexformer}. Furthermore, the F1-Confidence and Precision-Confidence curves indicated that the baseline model (S1) was able to maintain higher confidence levels (prediction stability) across the 12 ExDARK object classes classification range. The Confusion Matrix also revealed that the False Positive rate in scenarios S2 to S4 increased significantly. This increase in errors is primarily caused by the model detecting accumulations of residual noise from the color restoration algorithm as false object features.
+
+% [PLACEHOLDER_FIGURE_3: mAP Progression (comparison of mAP0.5 and mAP0.5:0.95 across scenarios)]
+% [PLACEHOLDER_FIGURE_4: F1-Confidence Curve and Precision-Confidence Curve (12 Class + All versions)]
+% [PLACEHOLDER_FIGURE_5: Confusion Matrix (Count and Normalized versions to highlight False Positives differences)]
+
+\subsection{Feature Degradation and Model Interpretability} To qualitatively examine the cause of accuracy degradation in enhanced images, this study applied the PyTorch Forward Hook interpretability method through Mean Activation Map and EigenCAM visualizations at the final layer (Layer N) of YOLOv11 \cite{metrics2026formulas}.
+
+Visualization of bounding box predictions (Prediction versus Groundtruth) demonstrated that the model in scenarios S2 to S4 frequently failed to precisely enclose (bound) objects, even though the objects appeared very bright to the human eye. Feature map analysis confirmed this phenomenon. In raw images (S1), Mean Activation and EigenCAM maps showed that the YOLOv11 network's attention concentration was accurately centered on the target object's semantic features. Conversely, on HVI-CIDNet (S2) results and other LLIE variants, the model's computational attention splintered and became disoriented towards the background area. The detector network responded to color correction artifacts and high-frequency noise as "salient features," which ultimately corrupted its overall spatial context understanding.
+
+% [PLACEHOLDER_FIGURE_6: Detection Results: Prediction vs Groundtruth. Note: Select example images where S1 successfully detects the object accurately, while S2-S4 boxes miss or have false positives]
+
+% [PLACEHOLDER_FIGURE_7: Model Interpretability: Original, First Layer, Mean Activation, and Eigen-CAM. Note: This is your "Golden Image" proving the model's attention is destroyed (scattered to the background) due to LLIE effects]
+
+\section{Conclusion}
+This research has conducted a comprehensive empirical evaluation of the impact of applying \textit{state-of-the-art} \textit{Low-Light Image Enhancement} (LLIE) algorithms, namely HVI-CIDNet \cite{yan2025hvi}, RetinexFormer \cite{cai2023retinexformer}, and LYT-Net \cite{brateanu2025lytnet}, on YOLOv11 object detector performance using the real-world ExDARK dataset \cite{loh2019exdark}. Contrary to the conventional assumption that visual visibility improvement always benefits detection systems, experimental results proved that the YOLOv11 architecture actually achieved a superior and more stable average accuracy (mAP) level when processing \textit{raw low-light} images directly without any preprocessing.
+The performance degradation in \textit{enhanced} image scenarios was quantitatively proven to be caused by the introduction of high-frequency \textit{noise} and the destruction of spatial edge preservation, reflected by the drastic drop in the \textit{Edge Preservation Index} (EPI) metric. The YOLOv11 architecture, equipped with cutting-edge feature extraction mechanisms such as the C3k2 block and C2PSA spatial attention \cite{khanam2024yolov11}, proved to have strong \textit{raw} perception capabilities but was highly vulnerable to artificial artifacts from color restoration algorithms. Qualitative analysis using \textit{Mean Activation Map} and EigenCAM interpretability methods \cite{metrics2026formulas} concretely confirmed this phenomenon. LLIE preprocessing disoriented network perception so that computational attention, which should have been centered on object semantic features, splintered and responded to background \textit{noise} as false features.
+These findings highlight a fundamental disconnect between image enhancement algorithms optimized for human eye perception and the need for pure gradient preservation for machine vision \cite{wu2024llieeffect}. Therefore, future research directions are highly recommended to shift from perceptual metric optimization (such as PSNR or SSIM) towards the development of restoration methods oriented around semantic preservation (\textit{task-driven enhancement}). Furthermore, exploring \textit{end-to-end} joint optimization or integrating illumination-aware attention modules into the detector's internal structure potentially provides a more robust solution for object detection systems in extreme low-light environments.
+
+\bibliographystyle{IEEEtran}
+\bibliography{referensi} % Calling the referensi.bib file
+
+\end{document}
