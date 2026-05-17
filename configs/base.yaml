@@ -4,72 +4,72 @@
 # =============================================================================
 
 # --- Reproducibility ---
-seed: 42
+seed: 42                        # Seed acak untuk menjamin hasil eksperimen dapat direproduksi persis. (sebelumnya: 42)
 
 # --- YOLO Training ---
 yolo:
-  model: "yolo11n.pt"          # YOLOv12 nano
-  imgsz: 640
-  epochs: 50                    # Override with QUICK_TEST for pipeline validation
-  batch: 16                     # Fits T4 16GB for YOLO12n  
-  patience: 10                  # Early stopping patience
-  optimizer: "AdamW"             # Ultralytics default (SGD)
-  workers: 4                    # Kaggle Dual T4 optimal
-  device: auto                  # Auto-detect: GPU if available, else CPU
-  exist_ok: true                # Overwrite existing run
-  pretrained: true
+  model: "yolo11n.pt"           # Model pre-trained dasar yang digunakan untuk di fine-tuning. (sebelumnya: yolo12n.pt)
+  imgsz: 640                    # Resolusi gambar yang akan diproses oleh model. (sebelumnya: 640)
+  epochs: 50                    # Total siklus pelatihan model pada keseluruhan dataset. (sebelumnya: 50)
+  batch: 16                     # Jumlah sampel gambar dalam satu iterasi pelatihan. (sebelumnya: 16)
+  patience: 15                  # Menghentikan pelatihan lebih awal jika tidak ada peningkatan metrik selama X epoch. (sebelumnya: 10)
+  optimizer: "AdamW"            # Algoritma optimasi untuk memperbarui bobot neural network. (sebelumnya: auto)
+  workers: 4                    # Jumlah proses CPU paralel untuk memuat data. (sebelumnya: 4)
+  device: 0                     # Target perangkat keras (GPU) untuk komputasi, 0 berarti GPU pertama. (sebelumnya: auto)
+  exist_ok: true                # Menimpa direktori eksperimen dengan nama yang sama jika sudah ada. (sebelumnya: true)
+  pretrained: true              # Menginisialisasi model dengan bobot awal agar lebih cepat konvergen. (sebelumnya: true)
 
   # Overfitting Tweaks
-  warmup_epochs: 5.0
-  weight_decay: 0.001
-  lr0: 0.005
-  lrf: 0.05
-  momentum: 0.937
+  warmup_epochs: 5.0            # Siklus awal di mana learning rate dinaikkan secara perlahan. (sebelumnya: 5.0)
+  weight_decay: 0.0005          # Penalti untuk mencegah bobot parameter model menjadi terlalu besar. (sebelumnya: 0.001)
+  lr0: 0.005                    # Nilai learning rate utama saat pelatihan dimulai. (sebelumnya: 0.005)
+  lrf: 0.01                     # Persentase penurunan akhir learning rate relatif terhadap lr0. (sebelumnya: 0.05)
+  momentum: 0.937               # Faktor momentum untuk optimizer agar mempercepat konvergensi di area datar. (sebelumnya: 0.937)
 
   # Augmentation — IDENTICAL for all scenarios (fairness)
-  hsv_h: 0.015
-  hsv_s: 0.7
-  hsv_v: 0.4
-  degrees: 0.0
-  translate: 0.2
-  scale: 0.7
-  shear: 0.0
-  perspective: 0.0
-  flipud: 0.0
-  fliplr: 0.5
-  mosaic: 1.0
-  mixup: 0.2
-  copy_paste: 0.0
-  auto_augment: randaugment
-  erasing: 0.2
+  hsv_h: 0.015                  # Toleransi pengubahan acak rona (hue) warna pada gambar. (sebelumnya: 0.015)
+  hsv_s: 0.7                    # Toleransi pengubahan acak saturasi warna pada gambar. (sebelumnya: 0.7)
+  hsv_v: 0.25                   # Toleransi pengubahan acak tingkat kecerahan (value) pada gambar. (sebelumnya: 0.4)
+  degrees: 0.0                  # Probabilitas memutar gambar dalam hitungan derajat. (sebelumnya: 0.0)
+  translate: 0.15               # Proporsi pergeseran objek gambar secara vertikal atau horizontal. (sebelumnya: 0.2)
+  scale: 0.7                    # Variasi ukuran pembesaran/pengecilan objek secara acak. (sebelumnya: 0.7)
+  shear: 0.0                    # Probabilitas memiringkan objek/gambar (shear distortion). (sebelumnya: 0.0)
+  perspective: 0.0              # Peluang distorsi ruang spasial gambar secara 3D. (sebelumnya: 0.0)
+  flipud: 0.0                   # Peluang membalikkan posisi gambar secara vertikal (atas-bawah). (sebelumnya: 0.0)
+  fliplr: 0.5                   # Peluang membalikkan posisi gambar secara horizontal (kiri-kanan). (sebelumnya: 0.5)
+  mosaic: 1.0                   # Proporsi menggabungkan 4 gambar ke dalam 1 grid untuk variasi objek kecil. (sebelumnya: 1.0)
+  mixup: 0.2                    # Proporsi menumpuk 2 gambar berbeda secara transparan. (sebelumnya: 0.2)
+  copy_paste: 0.1               # Proporsi menyalin objek dan menempelkannya di gambar lain. (sebelumnya: 0.0)
+  auto_augment: randaugment     # Kombinasi otomatis dari kumpulan augmentasi visual. (sebelumnya: randaugment)
+  erasing: 0.2                  # Proporsi acak menutupi/menghapus sebagian area gambar. (sebelumnya: 0.2)
 
   # Color
-  bgr: 0.0
+  bgr: 0.0                      # Probabilitas menukar urutan warna RGB menjadi BGR. (sebelumnya: 0.0)
 
   # Validation
-  conf: 0.001                   # Confidence threshold for val (Ultralytics default)
-  iou: 0.7                     # NMS IoU threshold for val
+  conf: 0.001                   # Batas ambang minimal keyakinan untuk menerima prediksi objek. (sebelumnya: 0.001)
+  iou: 0.7                      # Batas toleransi tumpang tindih (IoU) untuk menghapus prediksi ganda. (sebelumnya: 0.7)
 
 # --- Image Resize (pre-enhancement) ---
 resize:
-  target_size: 640              # Longest side, preserve aspect ratio
-  interpolation: "INTER_AREA"   # Best for downscaling
+  target_size: 640              # Target resolusi sisi terpanjang gambar saat proses pembesaran/pengecilan. (sebelumnya: 640)
+  interpolation: "INTER_AREA"   # Algoritma konversi piksel OpenCV, cocok saat gambar diperkecil. (sebelumnya: INTER_AREA)
 
 # --- NR Metrics ---
 nr_metrics:
-  sample_size: 1000             # Random sample from test set
-  metrics: ["niqe", "brisque"]  # LOE computed separately (needs raw-enhanced pair)
+  sample_size: 1000             # Limit jumlah gambar acak untuk evaluasi kualitas citra otomatis. (sebelumnya: 1000)
+  metrics: ["niqe", "brisque"]  # Kumpulan metrik image quality assesment tanpa referensi gambar asli. (sebelumnya: ["niqe", "brisque"])
 
 # --- Latency Measurement ---
 latency:
-  warmup: 50                    # Warmup iterations
-  iterations: 200               # Measurement iterations
-  input_size: [640, 640]        # Fixed input for timing
+  warmup: 50                    # Iterasi buangan awal (dry-run) tanpa dicatat untuk menstabilkan hardware. (sebelumnya: 50)
+  iterations: 200               # Jumlah pengulangan inferensi untuk mengukur latensi rata-rata. (sebelumnya: 200)
+  input_size: [640, 640]        # Dimensi dummy tensor masukan (fixed size) yang diukur durasi bacanya. (sebelumnya: [640, 640])
 
 # --- Dataset ---
 dataset:
-  num_classes: 12
-  class_names:
+  num_classes: 12               # Banyaknya unik kategori/label benda dalam dataset ExDARK. (sebelumnya: 12)
+  class_names:                  # Relasi pemetaan indeks numerik kelas ke penamaan aslinya. (sebelumnya: sama)
     0: "Bicycle"
     1: "Boat"
     2: "Bottle"
@@ -85,6 +85,6 @@ dataset:
 
 # --- Quick Test Mode ---
 # Set to true for pipeline validation (1 epoch, small subset)
-quick_test: false
-quick_test_epochs: 1
-quick_test_batch: 8
+quick_test: false               # Saklar aktivasi uji coba instan (dummy) untuk debugging skrip utama. (sebelumnya: false)
+quick_test_epochs: 1            # Pengaturan epoch sementara khusus untuk proses testing skrip saja. (sebelumnya: 1)
+quick_test_batch: 8             # Pengaturan batch sementara saat testing skrip. (sebelumnya: 8)

@@ -1,0 +1,202 @@
+NR-IQA (lower is better) - S1_Raw
+  NIQE    : 5.177017752177279
+  BRISQUE : 31.136155639648436
+  LOE     : None
+
+============================================================
+Spatial Metrics [S1_Raw]: 100%|██████████| 2563/2563 [00:23<00:00, 107.34it/s]
+🎯 SPATIAL METRICS ASSESSMENT — 
+S1_Raw
+============================================================
+  🌑 Shadow Area   : 66.10%  ❌ BANYAK AREA GELAP (enhancement kurang efektif
+)
+  ☀️  Mean Lum.     : 33.69   ❌ TERLALU GELAP
+  🌓 RMS Contrast  : 35.17   ✅ OPTIMAL
+  ✨ Noise σ       : 4.515  ✅ BERSIH
+  🛡️  EPI           : 1.0000 ✅ 
+TEPI TERJAGA BAIK
+  📐 Edge Density  : 4.28%  ✅ OPTIMAL
+
+  R-IQA (lower is better) - S2_HVI_CIDNet
+  NIQE    : 3.915875519370415
+  BRISQUE : 25.742954345703126
+  LOE     : 6.217757375
+
+============================================================
+Spatial Metrics [S2_HVI_CIDNet]: 100%|██████████| 2563/2563 [00:22<00:00, 111.84it/s]
+🎯 SPATIAL METRICS ASSESSMENT — S2_HVI_CIDNet
+============================================================
+  🌑 Shadow Area   : 11.64%  ⚠️ MODERATE
+
+
+  ☀️  Mean Lum.     : 114.59   ✅ OPTIMAL
+  🌓 RMS Contrast  : 61.02   ✅ OPTIMAL
+  ✨ Noise σ       : 7.427  ⚠️ MODERATE NOISE
+  🛡️  EPI           : 0.2004 ❌ TEPI BANYAK BERUBAH (risiko deteksi terganggu)
+  📐 Edge Density  : 11.21%  ✅ OPTIMAL
+
+  r) - S3_RetinexFormer
+  NIQE    : 3.940781460423659
+  BRISQUE : 17.174817504882814
+  LOE     : 6.821143125
+
+============================================================
+Spatial Metrics [S3_RetinexFormer]: 100%|██████████| 2563/2563 [00:26<00:00, 98.26it/s] 
+🎯 SPATIAL METRICS ASSESSMENT — S3_RetinexFormer
+============================================================
+  🌑 Shadow Area   : 21.61%  ❌ BANYAK AREA GELAP (enhancement kurang efektif)
+
+  ☀️  Mean Lum.     : 92.41   ✅ OPTIMAL
+  🌓 RMS Contrast  : 56.49   ✅ OPTIMAL
+  ✨ Noise σ       : 6.833  ⚠️ MODERATE NOISE
+  🛡️  EPI           : 0.2396 ❌ TEPI BANYAK BERUBAH (risiko deteksi terganggu)
+  📐 Edge Density  : 9.25%  ✅ OPTIMAL
+
+  NR-IQA (lower is better) - S4_LYT_Net
+  NIQE    : 4.329185201567474
+  BRISQUE : 26.41300604248047
+  LOE     : 4.461929075
+
+============================================================
+Spatial Metrics [S4_LYT_Net]: 100%|██████████| 2563/2563 [00:23<00:00, 108.18it/s]
+🎯 SPATIAL METRICS ASSESSMENT — S4_LYT_Net
+============================================================
+  🌑 Shadow Area   : 13.65%  ⚠️ MODERATE
+
+
+  ☀️  Mean Lum.     : 96.88   ✅ OPTIMAL
+  🌓 RMS Contrast  : 57.83   ✅ OPTIMAL
+  ✨ Noise σ       : 7.136  ⚠️ MODERATE NOISE
+  🛡️  EPI           : 0.2696 ❌ TEPI BANYAK BERUBAH (risiko deteksi terganggu)
+  📐 Edge Density  : 9.14%  ✅ OPTIMAL
+
+____________________________
+
+[EVAL - 2026-05-16 12:15:44] === S1_Raw Results - Epoch 50 - yolo11n.pt ===
+  mAP@0.5:      0.5576
+  mAP@0.5:0.95: 0.3309
+  Precision:     0.6312
+  Recall:        0.5146
+
+  Per-class mAP@0.5:
+    Bicycle     : 0.7033
+    Boat        : 0.5931
+    Bottle      : 0.6125
+    Bus         : 0.7780
+    Car         : 0.6796
+    Cat         : 0.3420
+    Chair       : 0.4921
+    Cup         : 0.4851
+    Dog         : 0.4910
+    Motorbike   : 0.4530
+    People      : 0.6576
+    Table       : 0.4034
+{'mAP_50': 0.5575673023748673, 'mAP_50_95': 0.33093920772735924, 'precision': 0.6311559388134768, 'recall': 0.51457238325182}
+
+[EVAL - 2026-05-16 12:26:25] === S2_HVI_CIDNet Results - Epoch 50 - yolo11n.pt ===
+  mAP@0.5:      0.5491
+  mAP@0.5:0.95: 0.3253
+  Precision:     0.6153
+  Recall:        0.5173
+
+  Per-class mAP@0.5:
+    Bicycle     : 0.6876
+    Boat        : 0.6030
+    Bottle      : 0.6191
+    Bus         : 0.7930
+    Car         : 0.6729
+    Cat         : 0.3476
+    Chair       : 0.4761
+    Cup         : 0.4815
+    Dog         : 0.4846
+    Motorbike   : 0.4030
+    People      : 0.6440
+    Table       : 0.3768
+{'mAP_50': 0.5491137914415162, 'mAP_50_95': 0.32528506282246344, 'precision': 0.6152863062086051, 'recall': 0.5172631425723984}
+
+[EVAL - 2026-05-16 14:55:43] === S3_RetinexFormer Results - Epoch 50 - yolo11n.pt ===
+  mAP@0.5:      0.5361
+  mAP@0.5:0.95: 0.3181
+  Precision:     0.5927
+  Recall:        0.5130
+
+  Per-class mAP@0.5:
+    Bicycle     : 0.6770
+    Boat        : 0.5494
+    Bottle      : 0.6159
+    Bus         : 0.7647
+    Car         : 0.6613
+    Cat         : 0.3368
+    Chair       : 0.4395
+    Cup         : 0.4697
+    Dog         : 0.4872
+    Motorbike   : 0.4089
+    People      : 0.6484
+    Table       : 0.3742
+{'mAP_50': 0.5360935246308813, 'mAP_50_95': 0.31809859342203084, 'precision': 0.59274004691484, 'recall': 0.5129875370122873}
+
+[EVAL - 2026-05-16 14:25:00] === S4_LYT_Net Results - Epoch 50 - yolo11n.pt ===
+  mAP@0.5:      0.5365
+  mAP@0.5:0.95: 0.3184
+  Precision:     0.6165
+  Recall:        0.5017
+
+  Per-class mAP@0.5:
+    Bicycle     : 0.6680
+    Boat        : 0.5649
+    Bottle      : 0.6185
+    Bus         : 0.7814
+    Car         : 0.6511
+    Cat         : 0.2925
+    Chair       : 0.4478
+    Cup         : 0.4837
+    Dog         : 0.5088
+    Motorbike   : 0.4068
+    People      : 0.6517
+    Table       : 0.3624
+{'mAP_50': 0.5364697757365124, 'mAP_50_95': 0.3184365630967543, 'precision': 0.6164847734919591, 'recall': 0.5017027854859556}
+
+____________________________
+[LATENCY] === S1_Raw ===
+  T_enhance: 0.00 ms (no enhancement)
+  T_detect:  14.52 ± 10.53 ms (p95: 54.79)
+  T_total:   14.52 ± 10.53 ms (p95: 54.79)
+[FLOPs] Computing YOLO FLOPs...
+YOLO11n summary: 182 layers, 2,592,180 parameters, 0 gradients, 6.5 GFLOPs
+
+[FLOPs] === S1_Raw ===
+  YOLO:      3.2262144 GFLOPs
+  Total:     3.2262144 GFLOPs
+
+[LATENCY] === S2_HVI_CIDNet ===
+  T_enhance : 100.53 ms
+  T_detect:  12.89 ± 9.97 ms (p95: 50.97)
+  T_total:   12.89 ± 9.97 ms (p95: 50.97)
+[FLOPs] Computing YOLO FLOPs...
+YOLO11n summary: 182 layers, 2,592,180 parameters, 0 gradients, 6.5 GFLOPs
+
+[FLOPs] === S2_HVI_CIDNet ===
+  YOLO:      3.2262144 GFLOPs
+  Total:     3.2262144 GFLOPs
+
+  [LATENCY] === S3_RetinexFormer ===
+  T_enhance : 356.29 ms
+  T_detect:  14.39 ± 11.91 ms (p95: 60.19)
+  T_total:   14.39 ± 11.91 ms (p95: 60.19)
+[FLOPs] Computing YOLO FLOPs...
+YOLO11n summary: 182 layers, 2,592,180 parameters, 0 gradients, 6.5 GFLOPs
+
+[FLOPs] === S3_RetinexFormer ===
+  YOLO:      3.2262144 GFLOPs
+  Total:     3.2262144 GFLOPs
+
+[LATENCY] === S4_LYT_Net ===
+   T_enhance: 101.67 ms
+  T_detect:  15.61 ± 11.25 ms (p95: 57.84)
+  T_total:   15.61 ± 11.25 ms (p95: 57.84)
+[FLOPs] Computing YOLO FLOPs...
+YOLO11n summary: 182 layers, 2,592,180 parameters, 0 gradients, 6.5 GFLOPs
+
+[FLOPs] === S4_LYT_Net ===
+  YOLO:      3.2262144 GFLOPs
+  Total:     3.2262144 GFLOPs

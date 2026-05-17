@@ -1,0 +1,96 @@
+\section{Results and Discussion}
+\subsection{Evaluasi Kualitas Citra dan Pelestarian Tepi}
+Evaluasi awal berfokus pada dampak algoritma pra-pemrosesan terhadap struktur spasial dan pencahayaan citra. Hasil komparasi kuantitatif dari keempat skenario disajikan pada Table \ref{tab:image_quality}. Berdasarkan evaluasi intensitas cahaya global, seluruh varian LLIE terbukti efektif menekan persentase area bayangan (Shadow Area) secara masif. HVI-CIDNet (S2) menunjukkan performa restorasi pencahayaan terbaik dengan menurunkan area bayangan dari 66.10\% pada citra mentah menjadi 11.64\%, diiringi dengan peningkatan Root Mean Square (RMS) Contrast tertinggi (61.02). Hal ini juga sejalan dengan metrik perseptual buta, di mana S2 dan S3 secara signifikan memperbaiki nilai NIQE dan BRISQUE menjadi lebih rendah, yang mengindikasikan bahwa citra hasil restorasi terlihat jauh lebih natural dan nyaman bagi persepsi mata manusia.
+
+Namun, optimasi pencahayaan ini mengorbankan pelestarian fitur tingkat rendah. Tingkat noise spasial ($\sigma$) melonjak drastis pada seluruh citra hasil restorasi. Kerusakan struktural ini tervalidasi secara fatal melalui Edge Preservation Index (EPI). Nilai EPI dievaluasi berdasarkan prinsip higher is better (mendekati 1.0). Pada citra mentah (S1), nilai EPI adalah 1.0000 karena merepresentasikan batas tepi asli. Akan tetapi, penerapan LLIE meruntuhkan nilai EPI hingga ke level 0.2004 pada S2 dan 0.2696 pada S4. Hal ini mengindikasikan bahwa algoritma peningkatan warna secara agresif telah memudarkan atau menciptakan tepi palsu yang sangat destruktif bagi proses ekstraksi fitur konvolusional.
+\begin{table}[htbp]
+\centering
+\caption{Kuantifikasi Kualitas Citra dan Degradasi Fitur Spasial}
+\label{tab:image_quality}
+\resizebox{\columnwidth}{!}{% % <-- Bungkus di sini
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Metrik Evaluasi} & \textbf{Baseline} & \textbf{HVI-CIDNet} & \textbf{RetinexForm} & \textbf{LYT-Net} \\
+\hline
+Shadow Area (\%) $\downarrow$ & 66.10 & \textbf{11.64} & 21.61 & 13.65 \\
+RMS Contrast $\uparrow$ & 35.17 & \textbf{61.02} & 56.49 & 57.83 \\
+NIQE $\downarrow$ & 5.1770 & \textbf{3.9159} & 3.9408 & 4.3292 \\
+BRISQUE $\downarrow$ & 31.1362 & 25.7430 & \textbf{17.1748} & 26.4130 \\
+Noise $\sigma \downarrow$ & \textbf{4.515} & 7.427 & 6.833 & 7.136 \\
+EPI $\uparrow$ & \textbf{1.0000} & 0.2004 & 0.2396 & 0.2696 \\
+\hline
+\multicolumn{5}{l}{$^{\mathrm{a}}$Tanda $\downarrow$ (lower is better); $\uparrow$ (higher is better). Cetak tebal adalah skor terbaik.}
+\end{tabular}% % <-- Penutup resizebox
+}
+\end{table}
+
+% [PLACEHOLDER_GAMBAR_1: visual_degradation_S1_S4.png]
+% Gambar yang menunjukkan citra S1 gelap tapi bentuknya utuh, sementara S2-S4 terang tapi noisynya kelihatan.
+
+\subsection{Kinerja Deteksi Objek}
+Evaluasi kinerja deteksi membuktikan adanya diskoneksi antara peningkatan persepsi visual manusia dengan kebutuhan sistem deteksi objek. Meskipun seluruh skenario menunjukkan laju konvergensi loss yang stabil selama fase pelatihan, hasil akhir akurasi deteksi memperlihatkan anomali empiris yang sejalan dengan temuan Wu et al. \cite{wu2024llieeffect}. Skenario baseline (S1) justru mengungguli seluruh varian citra hasil restorasi, baik dalam metrik rata-rata keseluruhan (mAP) maupun akurasi presisi pada mayoritas kelas objek.
+
+Temuan ini sangat kontras dengan literatur terdahulu \cite{wang2023yolov5lowlight}, \cite{shovo2024lowlight} yang menyimpulkan bahwa peningkatan citra sangat diwajibkan untuk mendongkrak performa deteksi. Perbedaan hasil ini secara langsung disebabkan oleh evolusi kapabilitas arsitektur detektor. Pada detektor generasi lama seperti YOLOv3 atau YOLOv5, kapasitas ekstraksi fitur sangat terbatas sehingga membutuhkan pra-pemrosesan LLIE untuk memperjelas piksel objek. Sebaliknya, arsitektur YOLOv11 telah dilengkapi dengan modul ekstraksi tingkat lanjut seperti C3k2, SPPF, dan atensi spasial C2PSA \cite{khanam2024yolov11}. Kemampuan mandiri YOLOv11 dalam membaca gradien murni pada kondisi gelap justru mengalami disorientasi ketika citra disuntikkan artefak dan noise dari algoritma LLIE, yang berujung pada tingginya angka False Positive. Rincian perbandingan Average Precision (AP) untuk setiap kelas disajikan pada Table \ref{tab:detection_metrics}.
+
+\begin{table}[htbp]
+\caption{Hasil Evaluasi Kinerja Deteksi (mAP dan AP per Kelas)}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Kelas / Metrik} & \textbf{S1 (Mentah)} & \textbf{S2 (HVI-CIDNet)} & \textbf{S3 (RetinexForm.)} & \textbf{S4 (LYT-Net)} \\
+\hline
+\textbf{mAP@0.5} $\uparrow$ & \textbf{[NILAI]} & [NILAI] & [NILAI] & [NILAI] \\
+\textbf{mAP@0.5:0.95} $\uparrow$ & \textbf{[NILAI]} & [NILAI] & [NILAI] & [NILAI] \\
+\hline
+AP: Bicycle & [NILAI] & [NILAI] & [NILAI] & [NILAI] \\
+AP: Car & [NILAI] & [NILAI] & [NILAI] & [NILAI] \\
+AP: People & [NILAI] & [NILAI] & [NILAI] & [NILAI] \\
+AP: [Kelas Lain...] & [NILAI] & [NILAI] & [NILAI] & [NILAI] \\
+\hline
+\end{tabular}
+\label{tab:detection_metrics}
+\end{center}
+\end{table}
+
+Berdasarkan data akurasi kelas, degradasi paling parah terjadi pada objek dengan detail struktural rumit atau berukuran kecil. Meskipun metode LLIE sedikit membantu lokalisasi pada objek berukuran masif dan minim tekstur, secara agregat statistik pergeseran batas tepi akibat noise sangat merugikan sensitivitas lokalisasi model.
+
+\subsection{Analisis Biaya Komputasi}
+Selain tidak memberikan imbal balik akurasi yang positif, integrasi metode restorasi citra sebagai pra-pemrosesan terbukti membebani sistem secara komputasional. Evaluasi beban waktu pemrosesan disajikan pada Table \ref{tab:computational_metrics}. Skenario S2 (HVI-CIDNet) dan S4 (LYT-Net) secara berurutan menambahkan latensi sebesar 100.53 ms dan 101.67 ms untuk memproses satu citra. Beban paling berat dihasilkan oleh pendekatan berbasis transformer pada S3 (RetinexFormer) dengan latensi mencapai 356.29 ms per citra. Akumulasi penundaan waktu ini secara matematis menghancurkan kapabilitas inferensi real-time dari varian YOLOv11 Nano yang sejatinya dirancang sangat ringan dan efisien.
+
+\begin{table}[htbp]
+\caption{Analisis Waktu Pra-Pemrosesan}
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Skenario} & \textbf{Waktu Pra-pemrosesan (ms) $\downarrow$} \\
+\hline
+S1 (Mentah) & \textbf{0.00} \\
+S2 (HVI-CIDNet) & 100.53 \\
+S3 (RetinexFormer) & 356.29 \\
+S4 (LYT-Net) & 101.67 \\
+\hline
+\end{tabular}
+\label{tab:computational_metrics}
+\end{center}
+\end{table}
+
+\subsection{Observasi Visual dan Interpretabilitas Model}
+Bukti kualitatif dari kegagalan LLIE terhadap proses ekstraksi fitur dapat diamati melalui prediksi lokalisasi pada Fig. \ref{fig:grid_predictions}. Pada skenario pertama, citra mentah sukses memfasilitasi model untuk mengenali target secara pas (True Positive). Sebaliknya, pada citra hasil restorasi, sering kali muncul kasus gagal deteksi (missed detection) akibat fitur asli objek yang tumpang tindih dengan restorasi pencahayaan, serta kasus deteksi palsu (False Positive) di mana pantulan cahaya pada latar belakang diidentifikasi sebagai objek.
+
+% [PLACEHOLDER_GAMBAR_2: grid_3x5_predictions.png]
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{grid_3x5_predictions.png}}
+\caption{Komparasi lokalisasi prediksi. Kolom (kiri ke kanan): Ground Truth, S1 (Mentah), S2 (HVI-CIDNet), S3 (RetinexFormer), S4 (LYT-Net). Baris atas merepresentasikan kasus deteksi sempurna pada citra mentah, sementara citra restorasi menghasilkan False Positive pada latar belakang.}
+\label{fig:grid_predictions}
+\end{figure}
+
+Untuk membongkar alasan struktural di balik fenomena disorientasi ini, penelitian ini mengekstraksi peta aktivasi (saliency) menggunakan metode Spatial Mean Activation dan Eigen-CAM pada lapisan semantik akhir (Layer N). Pendekatan Eigen-CAM mengekstraksi komponen utama (Principal Component 1) dari tensor aktivasi secara class-agnostic \cite{muhammad2020eigencam}, sehingga secara objektif menyoroti region mana yang memicu respons terkuat dari jaringan detektor.
+
+% [PLACEHOLDER_GAMBAR_3: eigencam_s1_vs_s2.png]
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{eigencam_s1_vs_s2.png}}
+\caption{Visualisasi peta aktivasi semantik Layer N (Mean Activation dan Eigen-CAM). Memperlihatkan perbandingan fokus atensi jaringan antara citra S1 dan S2.}
+\label{fig:eigen_cam}
+\end{figure}
+
+Hasil visualisasi pada Fig. \ref{fig:eigen_cam} secara definitif menjawab anomali akurasi sebelumnya. Pada citra mentah (S1), peta aktivasi Eigen-CAM terkonsentrasi secara solid pada fitur semantik target. Sebaliknya, pada citra S2 dan varian LLIE lainnya, atensi komputasi model terlihat pecah (scattered) dan menyebar ke area latar belakang. Jaringan dipaksa merespons noise frekuensi tinggi hasil modifikasi ruang warna sebagai batas spasial palsu. Hal ini membuktikan bahwa pelestarian gradien original jauh lebih dibutuhkan oleh sistem deteksi modern dibandingkan sekadar tingkat kecerahan visual.
