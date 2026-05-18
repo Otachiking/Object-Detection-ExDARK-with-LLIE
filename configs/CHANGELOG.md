@@ -1,5 +1,22 @@
 # Configuration History
 
+## [2026-05-18] - FINAL LOCK: Rolling back to the Undisputed Best Configuration (0.5528 mAP)
+**Reason**: Lowering `mosaic` (to 0.75) and `mixup` (to 0.15) caused a disastrous drop in mAP (0.5416) and Recall (0.5203 -> 0.5054). 
+Research Insight: ExDARK is a very small dataset (~7300 images). Lowering heavy augmentations like Mosaic caused the model to overfit and lose its generalization power. The model drastically missed objects (Recall drop), heavily penalizing classes like Cup, Chair, and Boat.
+**Action**: We are locking in the configuration from the `[2026-05-17 21:27:38]` run. No more micro-tweaking augmentations downwards.
+
+### FINAL BEST CONFIGURATION (Locked in base.yaml):
+- **Model**: `yolo11n.pt`
+- **Optimizer**: `AdamW`
+- **Patience**: 15
+- **Weight Decay**: 0.0005
+- **LRF**: 0.01
+- **Augmentasi - HSV_V**: 0.25 (Dark-domain optimized)
+- **Augmentasi - Translate**: 0.15
+- **Augmentasi - Copy-Paste**: 0.1 (Crucial for Motorbike/Boat)
+- **Augmentasi - Mixup**: 0.2 (Optimal balance)
+- **Augmentasi - Mosaic**: 1.0 (MANDATORY for small dataset scaling)
+
 ## [2026-05-18] - Reverting to "Best" Config with Mosaic & Mixup Adjustments
 **Reason**: The previous refined configuration (mAP 54.78%) helped large objects (Bus, Car) but absolutely destroyed Motorbike (-4.6%), Boat (-3.4%), and Cat (-1.3%). We are reverting back to the settings that yielded 55.28% mAP, but altering `mosaic` and `mixup` to specifically address the large and low-visibility objects.
 

@@ -1,10 +1,3 @@
-% ============================================================
-% referensi.bib — Generated from Referensi.txt label list
-% Label mapping: [A]-[AJ] → descriptive BibTeX keys
-% WARNING: Entries marked with NOTE need DOI/volume/page
-%          verification from the actual PDF before submission.
-% ============================================================
-
 % [A] Akavaram, S. (2025)
 @article{akavaram2025flops,
   author  = {Akavaram, Sravanthi},
@@ -260,13 +253,6 @@
   year    = {2024},
   eprint  = {2409.14461},
   archivePrefix = {arXiv},
-}
-
-% [AC] Wu, X., et al. (2024)
-@article{wu2024llieeffect,
-  author  = {Wu, Xinyue and others},
-  title   = {Low-Light Enhancement Effect on Classification and Detection: An Empirical Study},
-  year    = {2024},
 }
 
 @InProceedings{Yan2025HVI,
