@@ -1,5 +1,14 @@
 # Configuration History
 
+## [2026-05-18] - Reverting to "Best" Config with Mosaic & Mixup Adjustments
+**Reason**: The previous refined configuration (mAP 54.78%) helped large objects (Bus, Car) but absolutely destroyed Motorbike (-4.6%), Boat (-3.4%), and Cat (-1.3%). We are reverting back to the settings that yielded 55.28% mAP, but altering `mosaic` and `mixup` to specifically address the large and low-visibility objects.
+
+### Adjusted Configuration (Adopting Best + 2 Changes):
+- **Augmentasi - HSV_V**: 0.25 (Reverted back to best; too much brightness variation hurts ExDARK's natural domain).
+- **Augmentasi - Copy-Paste**: 0.1 (Reverted back to best; Motorbike and Boat heavily rely on this to learn).
+- **Augmentasi - Mixup**: 0.15 (Decreased from 0.2/0.25! Mixup creates "ghostly" transparent objects. For dark objects like Cat and Boat, this makes them nearly invisible and ruins training. Lower is better here).
+- **Augmentasi - Mosaic**: 0.75 (Decreased from 1.0! This means 25% of the time, the model sees a full, uncut image. This directly helps Bus and Car understand their spatial context without being chopped into 4 pieces).
+
 ## [2026-05-18] - Refined Augmentation for Per-Class Balancing
 **Reason**: While the overall mAP increased from 54.91% to 55.28%, large/rigid objects (Bus, Car) and low-visibility objects (Cat) dropped in accuracy. Meanwhile, small objects (Motorbike, Bicycle) improved significantly. 
 We tweaked `hsv_v`, `mixup`, and `copy_paste` to balance this out.
