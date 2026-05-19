@@ -1,5 +1,14 @@
 # Configuration History
 
+## [2026-05-19] - Scaling Up: 100 Epochs + `close_mosaic`
+**Reason**: Now that we have proven that heavy augmentation (Mosaic 1.0, Mixup 0.2, Copy-Paste 0.1) is mathematically mandatory for ExDARK, we run into a new bottleneck: **Time**. 50 epochs is notoriously too short for a model to converge when the dataset is heavily distorted every single batch. The model is essentially underfitting. 
+Additionally, we still want to help large objects (Bus, Car) without ruining small objects. We can do this using YOLO's `close_mosaic` feature.
+
+### Structural Improvements:
+- **`epochs`**: 100 (Increased from 50. Gives the model the actual time it needs to decipher the heavy augmentations).
+- **`patience`**: 25 (Increased from 15 to scale with the 100 epochs).
+- **`close_mosaic`**: 10 (NEW. Turns off Mosaic and Mixup entirely for the last 10 epochs. This gives the model 90 epochs of intense regularization to learn small/dark objects, and then 10 epochs of clean, uncut, unmixed images to perfect its spatial understanding of massive objects like Bus and Car!).
+
 ## [2026-05-18] - FINAL LOCK: Rolling back to the Undisputed Best Configuration (0.5528 mAP)
 **Reason**: Lowering `mosaic` (to 0.75) and `mixup` (to 0.15) caused a disastrous drop in mAP (0.5416) and Recall (0.5203 -> 0.5054). 
 Research Insight: ExDARK is a very small dataset (~7300 images). Lowering heavy augmentations like Mosaic caused the model to overfit and lose its generalization power. The model drastically missed objects (Recall drop), heavily penalizing classes like Cup, Chair, and Boat.
