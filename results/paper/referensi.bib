@@ -1,10 +1,3 @@
-% ============================================================
-% referensi.bib — Generated from Referensi.txt label list
-% Label mapping: [A]-[AJ] → descriptive BibTeX keys
-% WARNING: Entries marked with NOTE need DOI/volume/page
-%          verification from the actual PDF before submission.
-% ============================================================
-
 % [A] Akavaram, S. (2025)
 @article{akavaram2025flops,
   author  = {Akavaram, Sravanthi},
@@ -29,9 +22,10 @@
   doi     = {10.1109/LSP.2025.3563125},
 }
 
-% [C] Cai et al. (2023)
+% [C] Cai et al. (2023) — Authors verified from arXiv:2303.06705
 @inproceedings{cai2023retinexformer,
-  author    = {Cai, Yufei and others},
+  author    = {Cai, Yuanhao and Bian, Hao and Lin, Jing and Wang, Haoqian
+               and Timofte, Radu and Zhang, Yulun},
   title     = {Retinexformer: One-stage Retinex-based Transformer for Low-light Image Enhancement},
   booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
   year      = {2023},
@@ -205,7 +199,7 @@
 }
 
 % [X] Shovo, S. U. A., et al. (2024)
-@article{Shovo2024,
+@article{shovo2024lowlight,
   author  = {Shovo, Samier Uddin Ahammad and Abir, Md. Golam Rabbani and Kabir, Md. Mostafa and Mridha, M. F.},
   title   = {Advancing low light object detection with you only look once models: An empirical study and performance evaluation},
   journal = {Cognitive Computation and Systems},
@@ -240,37 +234,33 @@
   doi     = {10.3390/electronics12143089},
 }
 
-@inproceedings{wong2019yolonano,
+@article{wong2019yolonano,
   author    = {Wong, Alexander and Famuori, Mahmoud and Shafiee, Mohammad Javad and Li, Francis and Chwyl, Brendan and Chung, Jonathan},
   title     = {{YOLO Nano}: a Highly Compact You Only Look Once Convolutional Neural Network for Object Detection},
-  booktitle = {2020 Fifth Workshop on Energy Efficient Machine Learning and Cognitive Computing - NeurIPS Edition (EMC2-NIPS)},
+  journal   = {arXiv preprint arXiv:1910.01271},
   year      = {2019},
-  pages     = {22--25},
-  doi       = {10.1109/EMC2-NIPS53020.2019.00013},
-  note      = {arXiv:1910.01271},
   eprint    = {1910.01271},
   archivePrefix = {arXiv},
+  primaryClass = {cs.CV}
 }
 
-% Wu et al. (2024 LLIE effect)
+% Wu et al. (2024 LLIE effect) — Authors verified from arXiv:2409.14461
 @article{wu2024llieeffect,
-  author  = {Wu, Xinyue and others},  % atau Xu Wu dll. sesuaikan
+  author  = {Wu, Xu and Lai, Zhihui and Jie, Zhou and Gao, Can
+             and Hou, Xianxu and Zhang, Ya-nan and Shen, Linlin},
   title   = {Low-Light Enhancement Effect on Classification and Detection: An Empirical Study},
   journal = {arXiv preprint arXiv:2409.14461},
   year    = {2024},
   eprint  = {2409.14461},
   archivePrefix = {arXiv},
+  doi     = {10.48550/arXiv.2409.14461},
 }
 
-% [AC] Wu, X., et al. (2024)
-@article{wu2024llieeffect,
-  author  = {Wu, Xinyue and others},
-  title   = {Low-Light Enhancement Effect on Classification and Detection: An Empirical Study},
-  year    = {2024},
-}
-
-@InProceedings{Yan2025HVI,
-  author    = {Yan, Qingsen and others},
+% yan2025hvi (arXiv:2502.20272) — Authors verified from arXiv
+@InProceedings{yan2025hvi,
+  author    = {Yan, Qingsen and Feng, Yixu and Zhang, Cheng and Pang, Guansong
+               and Shi, Kangbiao and Wu, Peng and Dong, Wei and Sun, Jinqiu
+               and Zhang, Yanning},
   title     = {{HVI}: A New Color Space for Low-light Image Enhancement},
   booktitle = {2025 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   year      = {2025},
@@ -279,9 +269,10 @@
   doi       = {10.1109/CVPR52734.2025.00533}
 }
 
-% [AE] Yan, Q., et al. (2025) — HVI-CIDNet+
+% [AE] HVI-CIDNet+ — Authors verified from arXiv:2507.06814
 @inproceedings{yan2025hvicidnet,
-  author    = {Yan, Qingsen and others},
+  author    = {Yan, Qingsen and Shi, Kangbiao and Feng, Yixu and Hu, Tao
+               and Wu, Peng and Pang, Guansong and Zhang, Yanning},
   title     = {{HVI-CIDNet+}: Beyond Extreme Darkness for Low-Light Image Enhancement},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   year      = {2025},
@@ -359,12 +350,23 @@
   organization={IEEE}
 }
 
+% zhou2016cam — CAM foundational paper (cited for activation ≠ detection argument)
+@inproceedings{zhou2016cam,
+  author    = {Zhou, Bolei and Khosla, Aditya and Lapedriza, Agata
+               and Oliva, Aude and Torralba, Antonio},
+  title     = {Learning Deep Features for Discriminative Localization},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2016},
+  pages     = {2921--2929},
+  doi       = {10.1109/CVPR.2016.319},
+}
 
-@misc{lytnets2025,
+
+@misc{lytnets2024,
   author       = {Brateanu, Alexandru and others},
   title        = {{LYT-Net}: Official Implementation},
   howpublished = {\url{https://github.com/albrateanu/LYT-Net/}},
-  year         = {2025},
+  year         = {2024},
   note         = {Accessed: May 2026},
 }
 

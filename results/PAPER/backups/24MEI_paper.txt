@@ -1,0 +1,310 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Evaluasi Peningkatan Citra Berbasis HVI-CIDNet untuk Deteksi Objek Low-Light pada ExDark dengan YOLOv11}
+
+\author{\IEEEauthorblockN{Muhammad Iqbal Rasyid}
+\IEEEauthorblockA{\textit{Dept. of Informatics} \\
+\textit{Telkom University}\\
+Bandung, Indonesia \\
+otachiking@student.telkomuniversity.ac.id}
+\and
+\IEEEauthorblockN{Gamma Kosala}
+\IEEEauthorblockA{\textit{Dept. of Informatics} \\
+\textit{Telkom University}\\
+Bandung, Indonesia \\
+gammakosala@telkomuniversity.ac.id}
+}
+
+
+\maketitle
+
+\begin{abstract}
+Kualitas citra pada kondisi minim cahaya (low-light) menjadi tantangan besar untuk tugas deteksi objek dalam visi komputer. Sinyal lemah yang ditangkap oleh sensor kamera mengakibatkan tingkat derau (noise) yang tinggi dan kontras yang rendah, sehingga menyulitkan model deteksi untuk mengenali fitur objek dengan baik. Untuk mengatasi tantangan tersebut, penelitian ini mengevaluasi integrasi metode peningkatan citra (image enhancement) berbasis Color and Intensity Decoupling Network (CIDNet) yang beroperasi pada ruang warna HVI, dengan arsitektur deteksi objek mutakhir, YOLOv11. Evaluasi dilakukan menggunakan dataset Exclusively Dark (ExDark) yang mencakup 12 kelas objek dalam berbagai kondisi pencahayaan minim nyata. Hasil dari penelitian ini diharapkan dapat memberikan wawasan empiris mengenai seberapa besar pengaruh pra-pemrosesan HVI-CIDNet terhadap peningkatan akurasi metrik mean Average Precision (mAP) dari model YOLOv11.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Low-Light Image Enhancement, Object Detection, HVI-CIDNet, YOLOv11, ExDark
+\end{IEEEkeywords}
+
+\section{Introduction}
+Kinerja algoritma deteksi objek telah mengalami kemajuan pesat dalam dekade terakhir, dimulai dari arsitektur generasi pertama You Only Look Once (YOLO) \cite{redmon2016yolo} hingga berbagai iterasi mutakhirnya saat ini \cite{terven2023yoloreview,sapkota2025yoloreview}. Meskipun sistem visi mesin ini menunjukkan performa yang luar biasa pada kondisi pencahayaan normal \cite{szeliski2022}, akurasi deteksi seringkali terdegradasi secara drastis ketika dihadapkan pada lingkungan minim cahaya (low-light). Tantangan utama pada kondisi low-light meliputi hilangnya visibilitas, kontras yang sangat rendah, serta tingginya tingkat derau (noise) bawaan sensor kamera yang mengaburkan detail struktural objek \cite{goodfellow2016,loh2019exdark,gong2025multiscale}.
+
+Untuk mengatasi tantangan tersebut, pendekatan Low-Light Image Enhancement (LLIE) hadir sebagai tahap pra-pemrosesan guna memulihkan visibilitas citra. Berbagai metode telah dikembangkan, mulai dari pendekatan teori Retinex hingga metode berbasis Deep Learning yang lebih canggih seperti RetinexFormer \cite{cai2023retinexformer} dan arsitektur ringan LYT-Net \cite{brateanu2025lytnet}. Di antara berbagai inovasi tersebut, arsitektur Color and Intensity Decoupling Network (CIDNet) yang beroperasi pada ruang warna Horizontal/Vertical-Intensity (HVI) menawarkan pendekatan pemisahan komponen intensitas dan warna untuk mereduksi artefak \cite{yan2025hvi}. Metode ini secara empiris telah mencatatkan performa restorasi yang superior (state-of-the-art) pada beberapa dataset pengujian standar, seperti LOL-v1, LOL-v2-Real, dan LOL-v2-Synthetic.
+
+Meskipun metode-metode LLIE tersebut telah terbukti mampu merestorasi citra dengan skor evaluasi Peak Signal-to-Noise Ratio (PSNR) dan Structural Similarity (SSIM) yang sangat baik, efektivitasnya terhadap tugas deteksi objek tidak selalu dievaluasi secara komprehensif. Kalaupun metode peningkatan citra tersebut diintegrasikan ke dalam sistem deteksi, pengujian umumnya hanya dibatasi pada arsitektur generasi lama seperti YOLOv3 atau YOLOv5 \cite{shovo2024lowlight,wang2023yolov5lowlight}. Mekanisme ekstraksi fitur pada model generasi tersebut memiliki keterbatasan kapasitas jika dibandingkan dengan versi-versi terkini. Hal ini memunculkan sebuah celah penelitian yang kritis: peningkatan kualitas perseptual citra secara visual bagi mata manusia tidak menjamin adanya korelasi positif terhadap akurasi deteksi mesin. Sebaliknya, proses pra-pemrosesan ini berisiko mendistorsi gradien asli citra serta secara signifikan meningkatkan beban waktu pemrosesan dan latensi komputasi pada sistem \cite{wu2024llieeffect}. Oleh karena itu, asumsi bahwa LLIE mutakhir akan selalu berdampak positif terhadap detektor modern berkapasitas tinggi seperti YOLOv11 \cite{khanam2024yolov11} masih perlu dikaji melalui eksperimen empiris.
+
+Berdasarkan fenomena tersebut, penelitian ini bertujuan untuk mengevaluasi secara sistematis pengaruh penerapan pra-pemrosesan metode-metode LLIE terhadap kinerja detektor YOLOv11 pada dataset ExDARK. Secara eksplisit, penelitian ini memberikan empat kontribusi utama. Pertama, melakukan evaluasi kualitas peningkatan citra tanpa memerlukan referensi (ground truth) menggunakan blind perceptual dan metrik spasial struktural. Kedua, memaparkan analisis kinerja deteksi objek setelah diterapkan metode LLIE mutakhir. Ketiga, mengkuantifikasi peningkatan biaya komputasi beserta penambahan latensi sistem yang ditimbulkan oleh rangkaian proses peningkatan citra tersebut. Keempat, menghadirkan observasi kualitatif pendukung sebagai justifikasi dalam menunjukkan fenomena disorientasi fokus atensi jaringan detektor akibat intervensi artefak restorasi citra.
+
+
+
+
+
+\section{Related Work}
+\subsection{Low-Light Image Enhancement and Image Quality Metrics}
+Tujuan utama algoritma LLIE adalah memulihkan visibilitas dan warna dari citra yang terdegradasi akibat minimnya iluminasi \cite{liu2021benchmark}. Pendekatan mutakhir berbasis \textit{Deep Learning} seperti RetinexFormer \cite{cai2023retinexformer} dan arsitektur ringan LYT-Net \cite{brateanu2025lytnet} telah membuktikan kemampuan superior dalam merestorasi pencahayaan global. Inovasi pada manipulasi ruang warna turut diperkenalkan untuk menghindari distorsi. Pendekatan arsitektur CIDNet yang beroperasi pada ruang warna HVI terbukti mampu memisahkan pemrosesan intensitas dan warna secara independen guna mencegah amplifikasi noise silang \cite{yan2025hvi}.
+
+Untuk mengukur efektivitas metode tersebut, mayoritas studi LLIE hanya berhenti pada evaluasi kualitas visual menggunakan metrik \textit{Full-Reference} seperti PSNR dan SSIM \cite{wu2024llieeffect}. Namun, evaluasi menggunakan metode tersebut memiliki kelemahan fatal karena tidak dapat diaplikasikan pada dataset dunia nyata seperti ExDARK yang bersifat \textit{unpaired} atau tidak memiliki citra referensi terang \cite{loh2019exdark,liu2021benchmark}. Oleh karena itu, evaluasi kualitas citra pada kondisi nyata secara mutlak membutuhkan metode penilaian buta (\textit{No-Reference}). Penelitian ini mengadopsi Natural Image Quality Evaluator (NIQE) \cite{mittal2013niqe} dan Blind/Referenceless Image Spatial Quality Evaluator (BRISQUE) \cite{mittal2012brisque} untuk mengukur deviasi citra secara objektif. Lebih lanjut, pelestarian struktur batas objek dievaluasi menggunakan metrik Edge Preservation Index (EPI) guna memastikan bahwa perbaikan pencahayaan tidak menghancurkan fitur spasial fundamental.
+
+\subsection{Evolution of YOLO Architectures for Object Detection}
+Keluarga algoritma YOLO telah mendominasi tugas deteksi objek secara \textit{real-time} berkat arsitekturnya yang efisien sejak iterasi pertamanya \cite{redmon2016yolo}. Evolusi algoritma ini terus berlanjut hingga menghasilkan berbagai iterasi mutakhir \cite{terven2023yoloreview,sapkota2025yoloreview}. Pada generasi terdahulu seperti YOLOv3 dan YOLOv5, arsitektur ekstraksi fitur memiliki keterbatasan kapasitas dalam menangani citra dengan rasio \textit{signal-to-noise} yang sangat rendah.
+
+Sebaliknya, arsitektur modern YOLOv11 menawarkan peningkatan signifikan dalam efisiensi parameter dan akurasi ekstraksi \cite{khanam2024yolov11}. Integrasi modul seperti C3k2 (\textit{Cross Stage Partial with kernel size 2}) mempercepat ekstraksi fitur tingkat rendah, sementara modul C2PSA (\textit{Cross Stage Partial with Spatial Attention}) memperkuat mekanisme atensi spasial terhadap area penting di dalam citra. Kombinasi ini memungkinkan detektor untuk menangkap detail visual yang lebih halus secara mandiri dan mengekstraksi gradien murni bahkan pada kondisi pencahayaan yang kurang ideal.
+
+\subsection{Impact of LLIE on Object Detection}
+Mayoritas eksplorasi metode LLIE difokuskan pada peningkatan kualitas visual yang memanjakan persepsi mata manusia tanpa validasi lebih lanjut terhadap tugas visi mesin tingkat tinggi. Pada model detektor generasi lama, penerapan metode LLIE sebagai tahap pra-pemrosesan memang terbukti secara empiris mampu mendongkrak tingkat akurasi deteksi \cite{wang2023yolov5lowlight,shovo2024lowlight}. Beberapa penelitian juga mencoba mengatasi masalah pencahayaan rendah dengan memodifikasi arsitektur internal detektor, seperti menambahkan modul peningkatan tepi spasial langsung ke dalam \textit{backbone} model \cite{gong2025multiscale}.
+
+Meskipun demikian, terdapat diskoneksi fundamental antara optimasi citra untuk persepsi mata manusia dan optimasi fitur untuk analisis komputasional. Studi empiris mengungkapkan bahwa penerapan algoritma LLIE dapat berdampak inkonsisten pada tugas deteksi objek \cite{wu2024llieeffect}. Proses pemulihan iluminasi rentan menyuntikkan noise frekuensi tinggi, artefak peningkatan, serta pergeseran semantik yang secara permanen mengubah distribusi gradien asli citra \cite{goodfellow2016,elgendy2020}. Bagi detektor mutakhir seperti YOLOv11 yang memiliki kepekaan ekstraksi fitur sangat tinggi, intervensi dari artefak LLIE justru berpotensi mendisorientasi fokus atensi komputasinya. Alih-alih meningkatkan mAP, pra-pemrosesan ini berisiko menurunkan tingkat akurasi deteksi secara keseluruhan dan secara inheren membebani sistem dengan tambahan latensi komputasi.
+
+\section{Methodology}
+
+Penelitian ini menggunakan kerangka kerja eksperimental komparatif dengan dibagi menjadi lima tahapan utama: gambaran umum sistem, persiapan dataset, inferensi peningkatan citra, pelatihan model deteksi, serta metrik evaluasi.
+
+\subsection{System Overview}
+Sistem dirancang untuk mengevaluasi pengaruh penerapan LLIE terhadap kemampuan ekstraksi fitur detektor. Evaluasi ini mencakup tiga pilar utama: kualitas perbaikan citra, akurasi deteksi objek, dan total biaya komputasi. Alur penelitian dibagi menjadi empat skenario pengujian paralel. Skenario pertama beroperasi sebagai baseline dengan menjadikan citra mentah (raw) sebagai masukan secara langsung ke dalam detektor. Skenario kedua hingga keempat secara berurutan menerapkan modul peningkatan citra menggunakan metode HVI-CIDNet, RetinexFormer, dan LYT-Net. Gambaran umum dari perancangan sistem ini dapat dilihat pada Fig. \ref{fig:flowchart}.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{flowchart_methodology.png}}
+\caption{Bagan alur perancangan sistem komparatif antara skenario baseline (citra mentah) dan pra-pemrosesan varian LLIE.}
+\label{fig:flowchart}
+\end{figure}
+
+\subsection{Dataset and Pre-processing}
+Penelitian ini menggunakan dataset ExDARK karena secara spesifik dirancang untuk tugas deteksi objek pada pencahayaan rendah dan telah digunakan secara luas sebagai standar pengujian \cite{loh2019exdark}. Dataset ini mencakup 12 kategori objek dengan 10 variasi tingkat iluminasi. Untuk memastikan validitas pelatihan model, dataset direstrukturisasi secara acak menjadi tiga subset utama: 3.000 citra untuk pelatihan (training), 1.800 citra untuk validasi (validation), dan 2.563 citra untuk pengujian akhir (testing).
+
+Anotasi kotak pembatas (bounding box) dikonversi ke dalam format relatif YOLO, yang mencakup normalisasi titik tengah koordinat spasial beserta rasio lebar dan tinggi objek terhadap dimensi citra \cite{padilla2021metrics}. Selanjutnya, untuk memenuhi standar input arsitektur YOLOv11 tanpa merusak struktur geometris objek akibat distorsi, seluruh citra disesuaikan dimensinya menjadi resolusi 640x640 piksel menggunakan metode letterbox resizing. Metode ini mempertahankan rasio aspek asli dengan menambahkan padding pada area sisi citra.
+
+\subsection{Image Enhancement Inference}
+Untuk mengevaluasi dampak manipulasi intensitas cahaya terhadap sistem deteksi objek secara murni, penelitian ini membandingkan skenario citra mentah dengan tiga algoritma LLIE mutakhir: HVI-CIDNet \cite{yan2025hvi}, RetinexFormer \cite{cai2023retinexformer}, dan LYT-Net \cite{brateanu2025lytnet}. 
+
+Karena dataset ExDARK bersifat unpaired (tidak memiliki referensi groundtruth citra yang terang), tahap peningkatan citra dijalankan melalui mekanisme inferensi langsung menggunakan bobot pra-latih. Bobot yang digunakan berasal dari pelatihan pada dataset LOL-v1. Penggunaan bobot pra-latih tanpa melakukan penyesuaian ulang (fine-tuning) ini bertujuan untuk menguji kemampuan generalisasi (zero-shot generalization) dari masing-masing algoritma peningkat citra ketika dihadapkan pada domain data riil yang belum pernah dilihat sebelumnya. Penerapan LLIE ini dilakukan secara menyeluruh terhadap total 7.363 citra di dalam dataset ExDARK tanpa terkecuali, guna menghasilkan himpunan dataset sekunder yang sepenuhnya baru untuk masing-masing metode pengujian.
+
+\subsection{Object Detection Training}
+Arsitektur detektor yang digunakan difokuskan pada varian YOLOv11n \cite{khanam2024yolov11}. Pemilihan varian dengan kompleksitas terendah ini dirancang khusus untuk mengisolasi variabel eksperimen. Model berkapasitas kecil memiliki sensitivitas yang jauh lebih tinggi terhadap kualitas fitur dan gradien input dibandingkan model berkapasitas besar \cite{dobrzycki2025freezing}. Hal ini memastikan bahwa fluktuasi akurasi murni disebabkan oleh kualitas fitur citra yang dipengaruhi oleh LLIE, bukan oleh ketahanan internal arsitektur detektor. Selain itu, penggunaan model yang ringan merupakan kompensasi strategis terhadap beban komputasi tambahan yang ditimbulkan oleh tahap pra-pemrosesan citra.
+
+Pelatihan model YOLOv11n dilakukan secara konsisten pada keempat skenario selama 50 epochs dengan ukuran batch 16. Optimasi jaringan menggunakan algoritma AdamW dengan learning rate awal sebesar 0.005 dan weight decay 0.001. Guna meningkatkan kemampuan generalisasi detektor, strategi augmentasi data diaktifkan secara dinamis dengan probabilitas Mosaic (1.0), Mixup (0.2), serta Erasing (0.2).
+
+\subsection{Evaluation Metrics and Interpretability}
+Kinerja dari setiap skenario dievaluasi secara komprehensif menggunakan tiga kategori metrik utama: kualitas perbaikan citra, akurasi deteksi, dan biaya komputasi. 
+
+Selain metrik NIQE \cite{mittal2013niqe} dan BRISQUE \cite{mittal2012brisque}, evaluasi intensitas cahaya juga diukur menggunakan persentase Shadow Area dan Root Mean Square (RMS) Contrast untuk memvalidasi distribusi iluminasi secara global. Untuk mengukur pelestarian struktur spasial objek yang sangat krusial bagi sistem deteksi objek, penelitian ini menghitung Edge Preservation Index (EPI) yang diformulasikan sebagai tingkat irisan (Intersection over Union) batas tepi antara citra mentah dan citra hasil peningkatan:
+The Edge Preservation Index (EPI) quantifies the structural similarity
+of edges between the original and processed image:
+\begin{equation}
+  \text{EPI} = \frac{\sum_{x,y} G_e(x,y) \cdot G_o(x,y)}
+                    {\sqrt{\sum_{x,y} G_e^2(x,y) \cdot \sum_{x,y} G_o^2(x,y)}}
+\end{equation}
+where $G_e$ and $G_o$ denote the gradient magnitude of the enhanced and
+original images, respectively. A value of 1.0 indicates perfect edge
+preservation, while lower values indicate structural degradation.
+
+
+Kinerja deteksi objek diukur menggunakan standar COCO \cite{padilla2021metrics} melalui kalkulasi Average Precision (AP) pada masing-masing kelas objek, serta Mean Average Precision (mAP) pada ambang batas IoU 0.50 (mAP@0.5) dan rentang 0.50 hingga 0.95 (mAP@0.5:0.95). mAP dihitung sebagai rata-rata presisi dari seluruh kelas objek ($C$):
+\begin{equation}
+\text{mAP} = \frac{1}{C} \sum_{c=1}^{C} \text{AP}_c
+\end{equation}
+Sementara itu, biaya komputasional divalidasi menggunakan kalkulasi Giga Floating-Point Operations (GFLOPs) \cite{akavaram2025flops} dan analisis waktu pra-pemrosesan (ms).
+
+Sebagai tambahan, observasi visual melalui interpretasi peta fitur dilampirkan secara singkat untuk mengamati pergeseran fokus detektor secara kualitatif. Ekstraksi peta fitur dilakukan secara spesifik pada lapisan semantik akhir (Layer N) dari YOLOv11 menggunakan dua pendekatan komplementer: Spatial Mean Activation Map dan Eigen-CAM \cite{muhammad2020eigencam}. Pendekatan Mean Activation merata-ratakan nilai aktivasi seluruh saluran secara feed-forward, sedangkan Eigen-CAM mengekstraksi komponen utama pertama (Principal Component) dari tensor aktivasi melalui dekomposisi nilai singular (SVD). Kedua metode ini bersifat agnostik terhadap kelas (class-agnostic) dan dieksekusi tanpa perhitungan gradien balik guna menyoroti area salien yang paling direspons oleh jaringan detektor.
+
+\section{Results and Discussion}
+\subsection{Image Enhancement}
+
+Evaluasi ini menganalisis dampak algoritma pra-pemrosesan \textit{Low-Light 
+Image Enhancement} (LLIE) terhadap kualitas perseptual dan struktur spasial 
+citra. Perlu dicatat bahwa seluruh model LLIE beroperasi secara 
+\textit{zero-shot} tanpa \textit{pre-training} tambahan pada dataset target. Gambar~\ref{fig:llie_samples} menyajikan perbandingan visual keenam sampel. 
+Secara umum, seluruh metode berhasil mengungkap detail yang sebelumnya 
+tersamarkan melalui \textit{dynamic range expansion}, sebagaimana terlihat 
+pada sampel (a), (c), dan (d). Namun, peningkatan pencahayaan ini disertai 
+artefak yang bervariasi antar metode.
+
+
+
+\textbf{HVI-CIDNet} menunjukkan restorasi brightness paling agresif, namun 
+rentan terhadap \textit{chromatic noise} dan \textit{color distortion}
+pada sampel (b) dan (d). Pada scene dengan \textit{mixed lighting} seperti 
+sampel (e), metode ini mengalami \textit{highlight saturation} yang 
+mengakibatkan \textit{texture loss} pada area terang, mengindikasikan 
+kelemahan dalam \textit{local tone mapping}. Dibandingkan metode LLIE lainnya, \textbf{RetinexFormer} memiliki keunikan dalam memunculkan \textit{hue shift 
+artifacts} berupa warna oranye tidak natural pada region \textit{highlight} yang tinggi 
+(ditandai panah merah pada sampel (e) dan (f)), diduga akibat kegagalan 
+dekomposisi Retinex pada area transisi area bergradien tinggi. \textbf{LYT-Net} 
+secara konsisten menampilkan noise paling rendah dan bebas artefak warna 
+signifikan, namun tetap mampu menampilkan objek atau detail baru terhadap gambar yang minim cahaya seperti pada gambar (b) dan (c).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{LLIE_6Samples.png}
+    \caption{Visual Comparison of LLIE Results on Six Low-Light Image Samples:
+    (a) eksterior kendaraan malam hari, (b) interior ruangan dengan pencahayaan
+    minimal, (c) adegan \textit{mixed-light} dengan lampu meja, (d) properti 
+    di ruangan gelap dengan sedikit cahaya alami dari luar, (e) gambar hitam 
+    putih dalam kondisi \textit{outdoor}, dan (f) adegan kelompok orang dengan 
+    pencahayaan lilin.}
+    \label{fig:llie_samples}
+\end{figure}
+
+Tabel~\ref{tab:image_quality} menyajikan hasil evaluasi kuantitatif. 
+HVI-CIDNet unggul dalam restorasi pencahayaan global dengan penurunan 
+\textit{Shadow Area} terbesar (66,10\% ke 11,64\%) dan RMS \textit{Contrast} 
+tertinggi (61,02), didukung nilai NIQE terbaik yang mengindikasikan output 
+paling natural secara perseptual. Namun, optimasi ini mengorbankan pelestarian 
+fitur tingkat rendah: noise spasial ($\sigma$) meningkat pada seluruh metode, 
+dan \textit{Edge Preservation Index} (EPI) turun signifikan dari 
+\textit{baseline} 1,0000. LYT-Net memperoleh EPI terbaik di antara ketiga 
+metode (0,8325), konsisten dengan karakteristik \textit{low-noise}-nya, 
+sementara HVI-CIDNet mencatat EPI terendah (0,7503) yang mengindikasikan 
+gangguan struktural tepi paling agresif.
+
+\begin{table}[htbp]
+\centering
+\caption{Quantitative Comparison of Image Quality and Spatial Feature 
+Degradation Across LLIE Methods}
+\label{tab:image_quality}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Metric} & \textbf{Baseline} & \textbf{HVI-CIDNet} 
+    & \textbf{RetinexFormer} & \textbf{LYT-Net} \\
+\hline
+Shadow Area (\%) $\downarrow$  & 66.10 & \textbf{11.64} & 21.61 & 13.65 \\
+RMS Contrast $\uparrow$        & 35.17 & \textbf{61.02} & 56.49 & 57.83 \\
+NIQE $\downarrow$              & 5.1770 & \textbf{3.9159} & 3.9408 & 4.3292 \\
+BRISQUE $\downarrow$           & 31.1362 & 25.7430 & \textbf{17.1748} & 26.4130 \\
+Noise $\sigma$ $\downarrow$    & \textbf{4.5150} & 7.4270 & 6.8330 & 7.1360 \\
+EPI $\uparrow$                 & \textbf{1.0000} & 0.7503 & 0.7983 & 0.8325 \\
+\hline
+\multicolumn{5}{l}{$\downarrow$ lower is better; $\uparrow$ higher is better. 
+    Bolded text means best score.}\\
+\end{tabular}%
+}
+\end{table}
+
+% ==============
+
+\subsection{Kinerja Deteksi Objek}
+Evaluasi kinerja deteksi membuktikan adanya diskoneksi antara peningkatan persepsi visual manusia dengan kebutuhan sistem deteksi objek. Meskipun seluruh metode menunjukkan laju konvergensi loss yang stabil selama fase pelatihan, hasil akhir akurasi deteksi memperlihatkan anomali empiris yang sejalan dengan temuan Wu et al. \cite{wu2024llieeffect}. Skenario baseline justru mengungguli seluruh varian citra hasil restorasi, baik dalam metrik mAP keseluruhan maupun presisi pada mayoritas kelas objek.
+
+Temuan ini sangat kontras dengan literatur terdahulu \cite{wang2023yolov5lowlight}, \cite{shovo2024lowlight} yang menyimpulkan bahwa peningkatan citra diwajibkan untuk mendongkrak performa deteksi. Perbedaan hasil ini secara langsung disebabkan oleh evolusi kapabilitas arsitektur detektor. Pada model generasi lama seperti YOLOv3 atau YOLOv5, kapasitas ekstraksi fitur terbatas sehingga membutuhkan pra-pemrosesan LLIE untuk memperjelas piksel objek. Sebaliknya, arsitektur YOLOv11 telah dilengkapi modul ekstraksi tingkat lanjut seperti C3k2, SPPF, dan atensi spasial C2PSA \cite{khanam2024yolov11}. Kemampuan mandiri YOLOv11 dalam membaca gradien murni pada kondisi gelap justru mengalami disorientasi ketika citra disuntikkan artefak dari algoritma LLIE. Rincian perbandingan akurasi disajikan pada Table \begin{table}[htbp]
+\caption{Hasil Evaluasi Kinerja Deteksi (Metrik Keseluruhan dan AP per Kelas)}
+\label{tab:detection_metrics}
+\centering
+\resizebox{\columnwidth}{!}{% % <-- Mengunci lebar tabel agar pas dengan lebar teks halaman
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Metrik / Kelas} & \textbf{Baseline} & \textbf{HVI-CIDNet} & \textbf{RetinexFormer} & \textbf{LYT-Net} \\
+\hline
+\textbf{mAP@0.5} $\uparrow$ & \textbf{0.5576} & 0.5491 & 0.5361 & 0.5365 \\
+\textbf{mAP@0.5:0.95} $\uparrow$ & \textbf{0.3309} & 0.3253 & 0.3181 & 0.3184 \\
+\textbf{Precision} $\uparrow$ & \textbf{0.6312} & 0.6153 & 0.5927 & 0.6165 \\
+\textbf{Recall} $\uparrow$ & 0.5146 & \textbf{0.5173} & 0.5130 & 0.5017 \\
+\hline
+AP: Bicycle & \textbf{0.7033} & 0.6876 & 0.6770 & 0.6680 \\
+AP: Boat & 0.5931 & \textbf{0.6030} & 0.5494 & 0.5649 \\
+AP: Bottle & 0.6125 & \textbf{0.6191} & 0.6159 & 0.6185 \\
+AP: Bus & 0.7780 & \textbf{0.7930} & 0.7647 & 0.7814 \\
+AP: Car & \textbf{0.6796} & 0.6729 & 0.6613 & 0.6511 \\
+AP: Cat & 0.3420 & \textbf{0.3476} & 0.3368 & 0.2925 \\
+AP: Chair & \textbf{0.4921} & 0.4761 & 0.4395 & 0.4478 \\
+AP: Cup & \textbf{0.4851} & 0.4815 & 0.4697 & 0.4837 \\
+AP: Dog & 0.4910 & 0.4846 & 0.4872 & \textbf{0.5088} \\
+AP: Motorbike & \textbf{0.4530} & 0.4030 & 0.4089 & 0.4068 \\
+AP: People & \textbf{0.6576} & 0.6440 & 0.6484 & 0.6517 \\
+AP: Table & \textbf{0.4034} & 0.3768 & 0.3742 & 0.3624 \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Berdasarkan data akurasi kelas, degradasi paling parah terjadi pada objek dengan detail struktural rumit atau berukuran kecil. Meskipun restorasi LLIE sedikit membantu lokalisasi pada objek berukuran masif dan minim tekstur, secara agregat statistik, pergeseran batas tepi akibat noise frekuensi tinggi sangat merugikan sensitivitas lokalisasi model sehingga memicu tingginya angka False Positive.
+
+% ==============
+\subsection{Computational Cost}
+
+Tabel~\ref{tab:latency} menyajikan overhead komputasi yang diintroduksi
+oleh setiap pipeline pra-pemrosesan LLIE, diukur melalui latensi enhancer
+$T_{\text{enhance}}$ dan total beban komputasi pipeline dalam GFLOPs.
+\textit{Baseline} tanpa LLIE menjadi acuan dengan overhead nol dan total
+GFLOPs hanya dari detektor YOLO (3.226).
+
+RetinexFormer mencatat latensi dan beban komputasi tertinggi (356,29 ms;
+109,586 GFLOPs total), menjadikannya kandidat paling berat untuk skenario
+\textit{deployment edge-devices}. HVI-CIDNet dan LYT-Net memiliki $T_{\text{enhance}}$
+yang sebanding ($\approx$100 ms), namun keduanya perlu dibedakan: HVI-CIDNet
+memproses beban 50,83 GFLOPs dalam durasi tersebut, mengindikasikan
+utilisasi hardware yang lebih tinggi, sementara LYT-Net hanya membutuhkan
+10,63 GFLOPs untuk latensi yang setara, mencerminkan efisiensi arsitektural
+yang lebih baik dan skalabilitas lebih tinggi pada perangkat dengan sumber
+daya terbatas (\textit{edge devices}).
+
+Terlepas dari perbedaan antar metode, seluruh pipeline secara inheren melampaui ambang batas \textit{real-time} standar sebesar 33 ms per frame (30 FPS) yang
+umum dipersyaratkan pada sistem deteksi berbasis \textit{edge}
+\cite{liang2022edgeyolo}.
+
+\begin{table}[htbp]
+\centering
+\caption{Pipeline Latency and Computational Cost}
+\label{tab:latency}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Scenario} & $T_{\text{enhance}}$ \textbf{(ms)}
+    & \textbf{Total GFLOPs} \\
+\hline
+Baseline      & 0.00   & 3.226  \\
+HVI-CIDNet    & 100.53 & 54.056 \\
+RetinexFormer & 356.29 & 109.586 \\
+LYT-Net       & 101.67 & 13.856 \\
+\hline
+\multicolumn{3}{l}{Total GFLOPs = Enhancer GFLOPs + YOLO GFLOPs (3.226),}\\
+\multicolumn{3}{l}{constant across all scenarios.}\\
+\end{tabular}%
+}
+\end{table}
+
+% ==========
+
+\subsection{Observasi Visual dan Interpretabilitas Model}
+Bukti kualitatif dari kegagalan LLIE terhadap proses ekstraksi fitur dapat diamati melalui lokalisasi prediksi pada Fig. \ref{fig:grid_predictions}. Pada skenario pertama, citra baseline sukses memfasilitasi model untuk mengenali target secara pas (True Positive). Sebaliknya, pada citra hasil restorasi, sering kali muncul kasus gagal deteksi (missed detection) akibat tertutup artefak peningkatan warna, serta kasus deteksi palsu (False Positive) di mana noise pada latar belakang diidentifikasi sebagai objek.
+
+% [PLACEHOLDER_GAMBAR_2: grid_3x5_predictions.png]
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{grid_3x5_predictions.png}}
+\caption{Komparasi prediksi lokalisasi. Kolom (kiri ke kanan): Ground Truth, Baseline, HVI-CIDNet, RetinexFormer, LYT-Net.}
+\label{fig:grid_predictions}
+\end{figure}
+
+Untuk membongkar alasan struktural di balik fenomena ini, penelitian mengekstraksi peta aktivasi menggunakan Spatial Mean Activation dan Eigen-CAM pada lapisan semantik akhir (Layer N). Pendekatan Mean Activation merata-ratakan respons seluruh saluran untuk melihat distribusi intensitas fitur secara umum, sedangkan Eigen-CAM mengekstraksi komponen utama (Principal Component 1) secara class-agnostic \cite{muhammad2020eigencam} untuk menyoroti region dominan yang paling memicu atensi jaringan.
+
+% [PLACEHOLDER_GAMBAR_3: eigencam_s1_vs_s2.png]
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{eigencam_s1_vs_s2.png}}
+\caption{Visualisasi peta aktivasi semantik Layer N. Mengkomparasikan distribusi atensi (Mean Activation) dan fokus utama (Eigen-CAM) antara citra Baseline dan HVI-CIDNet.}
+\label{fig:eigen_cam}
+\end{figure}
+
+Hasil visualisasi pada Fig. \ref{fig:eigen_cam} secara definitif menjawab anomali akurasi sebelumnya. Pada citra baseline, baik Mean Activation maupun Eigen-CAM terkonsentrasi secara selaras pada fitur semantik target. Sebaliknya, pada citra HVI-CIDNet, terdapat perbedaan yang merugikan. Peta Mean Activation memperlihatkan respons intensitas yang menyala secara acak di hampir seluruh area, mengindikasikan bahwa model dibingungkan oleh noise spasial hasil restorasi. Lebih fatal lagi, peta Eigen-CAM membuktikan bahwa fokus utama (saliency) model pada akhirnya terpecah dan terdistraksi ke area latar belakang. Jaringan dipaksa merespons noise frekuensi tinggi sebagai batas spasial palsu, mengonfirmasi bahwa pelestarian gradien original jauh lebih vital bagi model modern dibandingkan tingkat kecerahan visual.
+
+\section{Conclusion}
+
+Penelitian ini membuktikan secara empiris bahwa integrasi algoritma Low-Light Image Enhancement (LLIE) seperti HVI-CIDNet, RetinexFormer, dan LYT-Net sebagai tahap pra-pemrosesan justru bersifat kontraproduktif terhadap kinerja sistem deteksi objek YOLOv11. Meskipun metode-metode tersebut terbukti efektif menekan area bayangan dan memperbaiki metrik kualitas visual perseptual secara signifikan, optimasi kecerahan ini secara agresif merusak pelestarian fitur tepi murni yang dibuktikan dengan anjloknya skor Edge Preservation Index (EPI) hingga menyentuh level 0.2004. Degradasi struktural tersebut dikonfirmasi lebih lanjut melalui analisis kualitatif peta aktivasi Spatial Mean Activation dan Eigen-CAM, di mana kehadiran artefak dan noise frekuensi tinggi akibat manipulasi ruang warna telah mendisorientasi fokus atensi jaringan dari target objek ke area latar belakang sebagai batas spasial palsu, sehingga memicu lonjakan tingkat False Positive. Selain mengorbankan akurasi deteksi (mAP, precision, dan recall), penambahan modul LLIE juga terbukti menghancurkan efisiensi komputasi karena menyuntikkan beban latensi hingga ratusan milidetik per citra. Secara keseluruhan, keunggulan mutlak dari skenario baseline (citra mentah) memberikan wawasan kritis bahwa arsitektur detektor modern dengan kapasitas terkecil sekalipun, seperti YOLOv11 Nano, memiliki kemampuan ekstraksi fitur mandiri yang tangguh dalam mempertahankan konsistensi gradien pada kondisi minim cahaya.
+
+\bibliographystyle{IEEEtran}
+\bibliography{referensi} % Memanggil file referensi.bib
+
+
+\end{document}

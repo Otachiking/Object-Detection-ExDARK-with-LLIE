@@ -69,6 +69,35 @@ def _blend_overlay(base_rgb: np.ndarray, heatmap_rgb: np.ndarray, alpha=0.5) -> 
     return cv2.addWeighted(base_rgb, alpha, heatmap_rgb, 1 - alpha, 0)
 
 
+def _letterbox_resize(img_bgr: np.ndarray, target_size=(640, 640), pad_value=114) -> np.ndarray:
+    """
+    Letterbox resize — sama persis dengan preprocessing YOLO saat training.
+    Mempertahankan aspek rasio asli dengan menambahkan padding abu-abu (nilai 114)
+    di sisi yang lebih pendek. Ini penting agar distribusi spasial aktivasi
+    yang ditangkap forward hook konsisten dengan kondisi saat pelatihan.
+
+    Args:
+        img_bgr:     Gambar input dalam format BGR (output cv2.imread).
+        target_size: Tuple (W, H) target. Default (640, 640).
+        pad_value:   Nilai padding; 114 adalah default YOLO letterbox.
+    Returns:
+        img_lb:  Gambar BGR berukuran target_size dengan padding.
+    """
+    h, w = img_bgr.shape[:2]
+    target_w, target_h = target_size
+    scale = min(target_w / w, target_h / h)
+    new_w, new_h = int(w * scale), int(h * scale)
+
+    resized = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+    # Canvas abu-abu (pad value 114 = default YOLO)
+    canvas = np.full((target_h, target_w, 3), pad_value, dtype=np.uint8)
+    pad_top  = (target_h - new_h) // 2
+    pad_left = (target_w - new_w) // 2
+    canvas[pad_top:pad_top + new_h, pad_left:pad_left + new_w] = resized
+    return canvas
+
+
 def generate_and_plot_yolo_vision(
     weights_path,
     test_images_dir,
@@ -153,9 +182,11 @@ def generate_and_plot_yolo_vision(
                 ax.axis('off')
             continue
 
-        # --- Resize ke 640x640 agar hook map tidak terdistorsi letterbox ---
+        # --- Letterbox ke 640x640 — konsisten dengan preprocessing YOLO training ---
+        # Gunakan letterbox (bukan simple resize) agar distribusi spasial aktivasi
+        # yang ditangkap hook sesuai dengan kondisi saat pelatihan model.
         ori_img = cv2.imread(img_path)
-        ori_img_640 = cv2.resize(ori_img, (640, 640))
+        ori_img_640 = _letterbox_resize(ori_img, target_size=(640, 640))
         tmp_path = os.path.join(out_path, f"_tmp_{img_name}")
         cv2.imwrite(tmp_path, ori_img_640)
         ori_rgb = cv2.cvtColor(ori_img_640, cv2.COLOR_BGR2RGB)
