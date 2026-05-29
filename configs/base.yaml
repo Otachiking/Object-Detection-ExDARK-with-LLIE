@@ -10,7 +10,7 @@ seed: 42                        # Seed acak untuk menjamin hasil eksperimen dapa
 yolo:
   model: "yolo11n.pt"           # Model pre-trained dasar yang digunakan untuk di fine-tuning. (sebelumnya: yolo12n.pt)
   imgsz: 640                    # Resolusi gambar yang akan diproses oleh model. (sebelumnya: 640)
-  epochs: 50                   # Ditingkatkan ke 100. Augmentasi berat butuh waktu lebih lama untuk dipahami model. (sebelumnya: 50)
+  epochs: 100                   # Ditingkatkan ke 100. Augmentasi berat butuh waktu lebih lama untuk dipahami model. (sebelumnya: 50)
   batch: 16                     # Jumlah sampel gambar dalam satu iterasi pelatihan. (sebelumnya: 16)
   patience: 25                  # Diperpanjang ke 25 menyesuaikan total epoch yang bertambah. (sebelumnya: 15)
   optimizer: "AdamW"            # Algoritma optimasi untuk memperbarui bobot neural network. (sebelumnya: auto)
